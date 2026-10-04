@@ -1,0 +1,1110 @@
+<title>DrossVault dMRV Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control-room console. Sticky header with source + status, tab strip, then summary tiles before detail panels. */
+:root {
+  --bg: #eef1f2;
+  --surface: #ffffff;
+  --surface-2: #f6f8f9;
+  --ink: #0f1a20;
+  --ink-2: #4a5862;
+  --muted: #7a868e;
+  --grid: #e3e8eb;
+  --axis: #c2cbd0;
+  --border: rgba(15, 26, 32, 0.11);
+  --accent: #1f64b8;
+  --accent-wash: rgba(42, 120, 214, 0.10);
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --s7: #4a3aa7;
+  --idle: #dde3e6;
+  --good: #0ca30c;
+  --good-ink: #006300;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --seq-0: #cde2fb; --seq-1: #9ec5f4; --seq-2: #6da7ec; --seq-3: #3987e5; --seq-4: #256abf; --seq-5: #184f95; --seq-6: #0d366b;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1012; --surface: #161b1e; --surface-2: #1c2225; --ink: #eef2f4; --ink-2: #b4c0c7; --muted: #86939b;
+    --grid: #252c30; --axis: #3a444a; --border: rgba(255, 255, 255, 0.10); --accent: #6aa8f0; --accent-wash: rgba(57, 135, 229, 0.16);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s7: #9085e9; --idle: #252c30; --good-ink: #0ca30c;
+    --seq-0: #0d366b; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #86b6ef; --seq-6: #cde2fb;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1012; --surface: #161b1e; --surface-2: #1c2225; --ink: #eef2f4; --ink-2: #b4c0c7; --muted: #86939b;
+  --grid: #252c30; --axis: #3a444a; --border: rgba(255, 255, 255, 0.10); --accent: #6aa8f0; --accent-wash: rgba(57, 135, 229, 0.16);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s7: #9085e9; --idle: #252c30; --good-ink: #0ca30c;
+  --seq-0: #0d366b; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #86b6ef; --seq-6: #cde2fb;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 0 48px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: 0.01em; text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; line-height: 1.1; }
+h2 { font-size: 21px; line-height: 1.2; }
+h3 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); font-weight: 600; }
+p { margin: 0; }
+.num, td.n, .mono { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.sub { color: var(--ink-2); font-size: 14px; }
+
+/* Header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); }
+.top-inner { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 14px 0; }
+.brand { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 24px; }
+.brand-mark { display: flex; align-items: center; gap: 12px; }
+.ingot { width: 34px; height: 34px; flex: none; }
+.eyebrow { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; color: var(--muted); font-weight: 600; }
+.status-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid var(--border); background: var(--surface); white-space: nowrap; }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pill.src { text-transform: none; letter-spacing: 0; font-family: var(--f-body); font-weight: 500; color: var(--ink-2); }
+.tabs { display: flex; gap: 2px; overflow-x: auto; margin-top: 12px; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { appearance: none; border: 0; background: none; color: var(--ink-2); font-family: var(--f-display); font-size: 15px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 14px 10px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
+.tab:hover { color: var(--ink); background: var(--accent-wash); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Panels */
+.view { display: grid; gap: 16px; padding-top: 20px; }
+.view-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px 24px; }
+.view-head .sub { max-width: 70ch; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.span2 { grid-column: 1 / -1; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; min-width: 0; display: grid; gap: 12px; align-content: start; }
+.card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+.card-head .sub { font-size: 13px; }
+.note { font-size: 13px; color: var(--ink-2); border-left: 3px solid var(--axis); padding: 2px 0 2px 10px; }
+.callout { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; color: var(--ink-2); }
+.callout b { color: var(--ink); }
+
+/* Stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.tile { background: var(--surface); padding: 12px 16px 14px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.tile .k { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; font-weight: 600; color: var(--muted); }
+.tile .v { font-family: var(--f-display); font-size: 32px; font-weight: 600; line-height: 1.1; }
+.tile .v small { font-family: var(--f-body); font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 4px; }
+.tile .d { font-size: 13px; color: var(--ink-2); }
+.delta-good { color: var(--good-ink); font-weight: 600; }
+.spark { width: 100%; height: 28px; display: block; margin-top: 4px; }
+
+/* Charts */
+.chart { width: 100%; position: relative; min-width: 0; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: var(--f-data); font-size: 11px; fill: var(--muted); }
+.chart .lbl { font-family: var(--f-body); font-size: 12px; fill: var(--ink-2); font-weight: 500; }
+.chart .val { font-family: var(--f-data); font-size: 11px; fill: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; flex: none; }
+.sw.box { height: 10px; width: 10px; border-radius: 2px; }
+.sw.dash { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px) !important; }
+#tip { position: fixed; z-index: 50; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0,0,0,.14); border-radius: 6px; padding: 8px 10px; font-size: 13px; min-width: 150px; max-width: 280px; }
+#tip .t { font-family: var(--f-display); font-weight: 600; letter-spacing: .03em; margin-bottom: 4px; }
+#tip .r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+#tip .r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+#tip .r b { font-family: var(--f-data); font-weight: 500; }
+
+/* HTML bar lists */
+.bars { display: grid; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 2fr) auto; gap: 10px; align-items: center; font-size: 14px; }
+.bar-row .name { overflow-wrap: anywhere; color: var(--ink); }
+.bar-track { height: 12px; background: var(--surface-2); border-radius: 0 4px 4px 0; position: relative; overflow: hidden; }
+.bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; background: var(--s1); }
+.bar-row .v { font-family: var(--f-data); font-size: 13px; color: var(--ink); text-align: right; white-space: nowrap; }
+.stack { display: flex; height: 12px; gap: 2px; }
+.stack > i { display: block; height: 100%; }
+.stack > i:last-child { border-radius: 0 4px 4px 0; }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-family: var(--f-display); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 600; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; position: sticky; top: 0; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+.scroll-y { max-height: 380px; overflow: auto; }
+.sev { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.sev svg { width: 14px; height: 14px; flex: none; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 12px; font-family: var(--f-display); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; background: var(--surface-2); border: 1px solid var(--border); color: var(--ink-2); white-space: nowrap; }
+.chip.hi { color: var(--ink); border-color: var(--accent); }
+.rule-id { font-family: var(--f-data); font-size: 12px; color: var(--accent); font-weight: 500; white-space: nowrap; }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); flex-wrap: wrap; }
+.seg button { appearance: none; border: 0; background: none; padding: 6px 12px; font: 600 13px var(--f-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+select, input[type="number"] { font: 500 14px var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+input[type="number"] { width: 100%; font-family: var(--f-data); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+label.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); min-width: 0; }
+label.field .row { display: flex; justify-content: space-between; gap: 8px; }
+label.field .row b { font-family: var(--f-data); font-weight: 500; color: var(--ink); }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; }
+.out { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.out > div { background: var(--surface-2); box-shadow: inset -1px -1px 0 var(--border); padding: 10px 14px; display: grid; gap: 2px; }
+.out .k { font-size: 12px; color: var(--muted); font-family: var(--f-display); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+.out .v { font-family: var(--f-display); font-size: 24px; font-weight: 600; line-height: 1.15; }
+details summary { cursor: pointer; font-family: var(--f-display); text-transform: uppercase; letter-spacing: .06em; font-size: 13px; font-weight: 600; color: var(--accent); }
+details[open] summary { margin-bottom: 10px; }
+
+/* Formula + lifecycle */
+.formula { font-family: var(--f-data); font-size: 15px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; overflow-x: auto; white-space: nowrap; }
+.formula .t-pos { color: var(--good-ink); }
+.formula .t-neg { color: var(--s2); }
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.flow .step { flex: 1 1 130px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.flow .step b { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .05em; font-size: 14px; }
+.flow .step p { font-size: 13px; color: var(--ink-2); }
+.flow .arrow { align-self: center; color: var(--muted); font-family: var(--f-data); }
+.flow .step.final { border-color: var(--good); }
+.flow .step.cancel { border-style: dashed; border-color: var(--critical); }
+.steps { display: grid; gap: 10px; counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+.steps li::before { counter-increment: s; content: counter(s); font-family: var(--f-data); font-size: 13px; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: grid; place-items: center; }
+.steps li b { font-family: var(--f-display); letter-spacing: .03em; font-size: 16px; }
+.steps li p { font-size: 14px; color: var(--ink-2); }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink-2); }
+footer { overflow-wrap: anywhere; margin-top: 28px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+
+@media (max-width: 640px) {
+  .wrap, .top-inner { padding-inline: 16px; }
+  h1 { font-size: 24px; }
+  .tile .v { font-size: 26px; }
+  .bar-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .bar-row .bar-track { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill { transition: width .4s ease; }
+}
+@media (forced-colors: active) {
+  .bar-fill, .stack > i { forced-color-adjust: none; }
+}
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg class="ingot" viewBox="0 0 34 34" aria-hidden="true"><path d="M5 22 L10 10 H24 L29 22 Z" style="fill:var(--s1)"/><path d="M5 22 H29 L27 27 H7 Z" style="fill:var(--accent);opacity:.55"/><path d="M12 14 H22" style="stroke:var(--surface);stroke-width:2;stroke-linecap:round"/></svg>
+        <div>
+          <div class="eyebrow">Digital measurement · reporting · verification</div>
+          <h1>DrossVault dMRV Console</h1>
+        </div>
+      </div>
+      <div class="status-row" id="statusRow"></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Dashboard sections" id="tabs">
+      <button class="tab" role="tab" data-tab="overview">Overview</button>
+      <button class="tab" role="tab" data-tab="energy">Energy &amp; savings</button>
+      <button class="tab" role="tab" data-tab="ops">Operations &amp; alerts</button>
+      <button class="tab" role="tab" data-tab="quality">Data quality</button>
+      <button class="tab" role="tab" data-tab="credits">Carbon credits</button>
+      <button class="tab" role="tab" data-tab="rollout">Rollout &amp; risks</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- OVERVIEW -->
+<section class="view" data-view="overview" role="tabpanel">
+  <div class="view-head">
+    <div>
+      <h2>Plant snapshot</h2>
+      <p class="sub" id="snapSub"></p>
+    </div>
+  </div>
+  <div class="tiles" id="latestTiles"></div>
+  <div class="tiles" id="periodTiles"></div>
+  <div class="grid g2">
+    <div class="card span2">
+      <div class="card-head">
+        <h3>Specific electricity consumption, baseline vs optimized</h3>
+        <span class="sub">kWh per tonne processed, daily, 1–30 Sep 2026</span>
+      </div>
+      <div class="legend" id="secLegend"></div>
+      <div class="chart" id="secChart"></div>
+      <details>
+        <summary>Daily data table</summary>
+        <div class="tbl-wrap scroll-y"><table id="dailyTable"></table></div>
+      </details>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Daily throughput</h3><span class="sub">tonnes/day vs 100 TPD design</span></div>
+      <div class="chart" id="tputChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Recovery rate</h3><span class="sub">% of processed input recovered</span></div>
+      <div class="legend" id="recLegend"></div>
+      <div class="chart" id="recChart"></div>
+    </div>
+  </div>
+  <div class="callout" id="scopeNote"></div>
+</section>
+
+<!-- ENERGY -->
+<section class="view" data-view="energy" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Where the energy goes, and how it comes down</h2>
+      <p class="sub">Equipment shares are the workbook's baseline profile. The savings bridge and business case use the simulated optimization scenario, which is a potential, not a measured result.</p>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Energy hotspots</h3><span class="sub">share of baseline kWh/t</span></div>
+      <div class="bars" id="equipBars"></div>
+      <p class="note">Priority rule from the workbook: share ≥ 25% is High (investigate runtime and load), ≥ 18% is Medium (review setpoints), otherwise Low (monitor).</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>SEC savings bridge</h3><span class="sub">kWh/t, baseline to optimized</span></div>
+      <div class="chart" id="bridgeChart"></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Optimization interventions</h3><span class="sub">all six are at pilot status</span></div>
+      <div class="tbl-wrap"><table id="intTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Daily energy saved under the scenario</h3><span class="sub">kWh/day</span></div>
+      <div class="chart" id="savedChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Business case</h3><span class="sub">edit the inputs; outputs recalculate</span></div>
+      <div class="form" id="bcForm"></div>
+      <div class="out" id="bcOut"></div>
+      <p class="note">Tariff, CAPEX, software, support and grid factor are workbook placeholders. Replace them with project values and the CEA-approved grid factor before commercial use.</p>
+    </div>
+  </div>
+</section>
+
+<!-- OPERATIONS -->
+<section class="view" data-view="ops" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Operations and alerts</h2>
+      <p class="sub">720 hourly records. Alerts follow the operating-state-aware logic: no equipment fault is raised while the plant is idle, and only unexpected standby energy can alert.</p>
+    </div>
+  </div>
+  <div class="tiles" id="alertTiles"></div>
+  <div class="card">
+    <div class="card-head">
+      <h3>Hourly heatmap</h3>
+      <div class="controls">
+        <div class="seg" id="hmMetric" role="group" aria-label="Heatmap metric"></div>
+      </div>
+    </div>
+    <div class="legend" id="hmLegend"></div>
+    <div class="chart" id="heatmap"></div>
+    <p class="sub">Select a day column to inspect its sensor traces below.</p>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <h3 id="dayTitle">Sensor traces</h3>
+      <div class="controls"><label class="sub" for="daySel">Day</label><select id="daySel"></select></div>
+    </div>
+    <div class="legend"><span><i class="sw box" style="background:var(--accent-wash);border:1px solid var(--s1)"></i>Normal band (Anomaly_Config)</span><span><i class="sw box" style="background:var(--idle)"></i>Idle hours</span></div>
+    <div class="grid g2" id="traces"></div>
+    <div class="callout" id="envNote"></div>
+  </div>
+  <div class="grid g2">
+    <div class="card span2">
+      <div class="card-head">
+        <h3>Alert log</h3>
+        <div class="seg" id="alertFilter" role="group" aria-label="Filter alerts"></div>
+      </div>
+      <div class="tbl-wrap scroll-y"><table id="alertTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Anomaly scoring configuration</h3><span class="sub">0–100 weighted deviation</span></div>
+      <div class="tbl-wrap"><table id="cfgTable"></table></div>
+      <div class="legend" id="bandLegend"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hours by operating state</h3><span class="sub">30 days</span></div>
+      <div class="bars" id="stateBars"></div>
+      <div class="card-head"><h3>Diagnosis notes</h3><span class="sub">hours</span></div>
+      <div class="bars" id="diagBars"></div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA QUALITY -->
+<section class="view" data-view="quality" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Data quality and verification trail</h2>
+      <p class="sub">Seven sensor and KPI channels, one record per hour each. A reading counts toward reporting only when it is valid and verified.</p>
+    </div>
+  </div>
+  <div class="tiles" id="dqTiles"></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Completeness by channel</h3><span class="sub">records out of 720</span></div>
+      <div class="legend"><span><i class="sw box" style="background:var(--s1)"></i>Valid, verified</span><span><i class="sw box" style="background:var(--s4)"></i>Missing, under review</span></div>
+      <div class="bars" id="dqBars"></div>
+      <div class="callout" id="dqNote"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Sensor register</h3><span class="sub">calibration and source</span></div>
+      <div class="tbl-wrap"><table id="sensorTable"></table></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Validation rules from the submission</h3><span class="sub">how each rule applies to this dataset</span></div>
+      <div class="tbl-wrap"><table id="vRules"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Resolution rules</h3><span class="sub">doubt resolves toward fewer credits</span></div>
+      <div class="tbl-wrap"><table id="rRules"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Ledger rules</h3><span class="sub">SHA-256 hash chain, Merkle root per period</span></div>
+      <div class="tbl-wrap"><table id="lRules"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- CREDITS -->
+<section class="view" data-view="credits" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Carbon credits for a CBG plant</h2>
+      <p class="sub">From the hackathon submission: a 5 TPD compressed biogas plant running 330 days. Every input is an assumption to be replaced with measured data and the approved CCTS methodology. One Carbon Credit Certificate equals one tonne of CO₂e.</p>
+    </div>
+  </div>
+  <div class="formula">ER = <span class="t-pos">BE<sub>CH₄</sub> + BE<sub>fossil</sub></span> − <span class="t-neg">PE</span> − <span class="t-neg">LE</span> &nbsp;·&nbsp; PE = E<sub>grid</sub>×EF<sub>grid</sub> + V<sub>diesel</sub>×EF<sub>diesel</sub> + (M<sub>slip</sub>+M<sub>leak</sub>+M<sub>flare</sub>)×GWP<sub>CH₄</sub> + PE<sub>digestate</sub></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Credit calculator</h3><span class="sub">worked-example defaults</span></div>
+      <div class="form" id="erForm"></div>
+      <div class="chart" id="erChart"></div>
+      <p class="note">Methane-avoidance credits (BE<sub>CH₄</sub>) come on top and depend on feedstock type and its baseline fate, so they are excluded here. Credits round down to whole tonnes (rule C7).</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Revenue and payback</h3><span class="sub">CCC prices are not yet established</span></div>
+      <div class="controls"><div class="seg" id="modelSeg" role="group" aria-label="Revenue model"></div></div>
+      <div class="form" id="revForm"></div>
+      <div class="out" id="revOut"></div>
+      <div class="chart" id="sensChart"></div>
+      <p class="note" id="modelNote"></p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Installation kit per plant</h3><span class="sub">estimate, INR</span></div>
+      <div class="bars" id="kitBars"></div>
+      <p class="sub">Total <b class="num">₹12,49,000</b>, less where the plant already has gas analyzers or flow meters.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Market size</h3><span class="sub">CBG plants, at ₹12.5 lakh hardware + ₹5 lakh/yr</span></div>
+      <div class="tbl-wrap"><table id="mktTable"></table></div>
+      <div class="bars" id="mktBars"></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Credit lifecycle</h3><span class="sub">every arrow is a registry event on the hash chain (G8)</span></div>
+      <div class="flow" id="lifecycle"></div>
+      <div class="tbl-wrap"><table id="creditRecord"></table></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Who sees what</h3><span class="sub">three screens, three users</span></div>
+      <div class="grid g3" id="personas"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ROLLOUT -->
+<section class="view" data-view="rollout" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Rollout and risks</h2>
+      <p class="sub">Pilot at the Dross Vault Guwahati plant, then developers with several plants, then bundled into new SATAT builds.</p>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Scale-up pathway</h3></div>
+      <ol class="steps" id="pathway"></ol>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Feedstock to verified credit</h3><span class="sub">each step leaves a ledger record</span></div>
+      <ol class="steps" id="pipeline"></ol>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Risk register</h3></div>
+      <div class="tbl-wrap"><table id="riskTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Manual MRV vs dMRV</h3></div>
+      <div class="tbl-wrap"><table id="cmpTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Open questions</h3></div>
+      <ul class="plain" id="openQs"></ul>
+      <div class="card-head"><h3>Workbook assumptions</h3></div>
+      <div class="tbl-wrap"><table id="assumpTable"></table></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Sources: <span class="mono">data/DrossVault_Digital_MRV_Executive_Dashboard.xlsx</span> (synthetic 30-day demonstration dataset) and <span class="mono">data/Dross_Vault_dMRV_Hackathon_Submission.pdf</span> (4 Oct 2026).</p>
+  <p>The grid emission factor (0.716 kg CO₂e/kWh) is a placeholder. Confirm the approved factor before external reporting.</p>
+</footer>
+</main>
+<div id="tip" hidden></div>
+
+<script>
+window.DV_DATA = __DATA__;
+</script>
+<script>
+(() => {
+const D = window.DV_DATA;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (v, d = 0) => v == null || isNaN(v) ? "–" : Number(v).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+const inr = v => {
+  if (v == null || !isFinite(v)) return "–";
+  const a = Math.abs(v), s = v < 0 ? "−" : "";
+  if (a >= 1e7) return `${s}₹${fmt(a / 1e7, 2)} cr`;
+  if (a >= 1e5) return `${s}₹${fmt(a / 1e5, 1)} lakh`;
+  return `${s}₹${fmt(a)}`;
+};
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const dLabel = iso => { const [y, m, d] = iso.split("-"); return `${+d} ${MONTHS[+m - 1]}`; };
+const sum = a => a.reduce((s, v) => s + (v || 0), 0);
+const mean = a => { const f = a.filter(v => v != null); return sum(f) / f.length; };
+
+/* ---------- tooltip ---------- */
+const tip = $("#tip");
+function showTip(e, title, rows) {
+  tip.innerHTML = `<div class="t">${esc(title)}</div>` + rows.map(r =>
+    `<div class="r"><span>${r.c ? `<i class="sw box" style="background:${r.c}"></i>` : ""}${esc(r.k)}</span><b>${esc(r.v)}</b></div>`).join("");
+  tip.hidden = false;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = e.clientY - h - pad;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+
+/* ---------- chart helpers ---------- */
+function niceTicks(min, max, n = 4) {
+  if (min === max) { min -= 1; max += 1; }
+  const step0 = (max - min) / n, mag = 10 ** Math.floor(Math.log10(step0)), err = step0 / mag;
+  const step = (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1) * mag;
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step, t = [];
+  for (let v = lo; v <= hi + step / 2; v += step) t.push(+v.toFixed(10));
+  return t;
+}
+const renders = [];
+function chart(el, fn) { const r = () => { if (el.offsetParent !== null) fn(el, el.clientWidth || 600); }; renders.push(r); r(); }
+let rT; addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => renders.forEach(f => f()), 120); });
+
+function legend(el, items) {
+  el.innerHTML = items.map(i => `<span><i class="sw ${i.box ? "box" : ""} ${i.dash ? "dash" : ""}" style="background:${i.c};--c:${i.c}"></i>${esc(i.k)}</span>`).join("");
+}
+
+/* Line chart with crosshair. o = {labels, series:[{name, values, c, dash}], unit, d, yMin, yMax, ref:{v,label}, band:{lo,hi}, H} */
+function lineChart(el, o) {
+  chart(el, (el, W) => {
+    const H = o.H || 240, m = { t: 14, r: 18, b: 26, l: 40 };
+    const n = o.labels.length, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const vals = o.series.flatMap(s => s.values).filter(v => v != null);
+    if (o.ref) vals.push(o.ref.v);
+    if (o.band) vals.push(o.band.lo, o.band.hi);
+    const ticks = niceTicks(o.yMin ?? Math.min(...vals), o.yMax ?? Math.max(...vals), o.ticks || 4);
+    const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const x = i => m.l + (n === 1 ? iw / 2 : i * iw / (n - 1));
+    const y = v => m.t + ih - (v - y0) / (y1 - y0) * ih;
+    let s = "";
+    if (o.shade) o.shade.forEach(([a, b]) => { s += `<rect x="${x(a) - iw / (n - 1) / 2}" y="${m.t}" width="${(b - a + 1) * iw / (n - 1)}" height="${ih}" style="fill:var(--idle);opacity:.7"/>`; });
+    if (o.band) s += `<rect x="${m.l}" y="${y(o.band.hi)}" width="${iw}" height="${y(o.band.lo) - y(o.band.hi)}" style="fill:var(--accent-wash)"/>`;
+    ticks.forEach(t => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t, o.td ?? 0)}</text>`; });
+    const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 64))));
+    o.labels.forEach((l, i) => { if (i % every === 0) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(o.xFmt ? o.xFmt(l, i) : l)}</text>`; });
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${m.t + ih}" y2="${m.t + ih}" style="stroke:var(--axis)"/>`;
+    if (o.ref) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(o.ref.v)}" y2="${y(o.ref.v)}" style="stroke:var(--ink-2);stroke-dasharray:3 4"/><text x="${W - m.r}" y="${y(o.ref.v) + (o.refBelow ? 15 : -5)}" text-anchor="end" class="lbl">${esc(o.ref.label)}</text>`;
+    o.series.forEach(se => {
+      let d = "", pen = false;
+      se.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
+      s += `<path d="${d}" style="fill:none;stroke:${se.c};stroke-width:2;stroke-linejoin:round;stroke-linecap:round${se.dash ? ";stroke-dasharray:5 4" : ""}"/>`;
+      let li = se.values.length - 1; while (li > 0 && se.values[li] == null) li--;
+      if (!o.noEnd && se.values[li] != null) s += `<circle cx="${x(li)}" cy="${y(se.values[li])}" r="4" style="fill:${se.c};stroke:var(--surface);stroke-width:2"/>`;
+    });
+    (o.marks || []).forEach(mk => { s += `<circle cx="${x(mk.i)}" cy="${y(mk.v)}" r="6" style="fill:var(--critical);stroke:var(--surface);stroke-width:2"/>`; });
+    s += `<g class="xh" style="display:none"><line y1="${m.t}" y2="${m.t + ih}" style="stroke:var(--ink-2);stroke-width:1"/>${o.series.map(se => `<circle r="4" style="fill:${se.c};stroke:var(--surface);stroke-width:2"/>`).join("")}</g>`;
+    s += `<rect class="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" style="fill:transparent"/>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(o.aria || "")}">${s}</svg>`;
+    const svg = el.firstChild, xh = svg.querySelector(".xh"), line = xh.querySelector("line"), dots = xh.querySelectorAll("circle");
+    svg.querySelector(".hit").addEventListener("pointermove", e => {
+      const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+      const i = Math.max(0, Math.min(n - 1, Math.round((px - m.l) / (iw / (n - 1 || 1)))));
+      xh.style.display = ""; line.setAttribute("x1", x(i)); line.setAttribute("x2", x(i));
+      o.series.forEach((se, k) => { const v = se.values[i]; dots[k].style.display = v == null ? "none" : ""; if (v != null) { dots[k].setAttribute("cx", x(i)); dots[k].setAttribute("cy", y(v)); } });
+      showTip(e, o.tipTitle ? o.tipTitle(i) : o.labels[i], o.series.map(se => ({ c: se.c, k: se.name, v: se.values[i] == null ? "–" : `${fmt(se.values[i], o.d ?? 1)} ${o.unit || ""}` })).concat(o.tipExtra ? o.tipExtra(i) : []));
+    });
+    svg.querySelector(".hit").addEventListener("pointerleave", () => { xh.style.display = "none"; hideTip(); });
+  });
+}
+
+/* Vertical bar chart. o = {labels, values, c, unit, d, ref, H, colorFn} */
+function barChart(el, o) {
+  chart(el, (el, W) => {
+    const H = o.H || 220, m = { t: 14, r: 12, b: 26, l: 44 };
+    const n = o.values.length, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const mx = Math.max(...o.values, o.ref ? o.ref.v : 0);
+    const ticks = niceTicks(o.yMin ?? 0, mx, 4), y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const y = v => m.t + ih - (v - y0) / (y1 - y0) * ih;
+    const bw = iw / n, gap = Math.max(2, bw * 0.22);
+    let s = "";
+    ticks.forEach(t => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`; });
+    o.values.forEach((v, i) => {
+      const x = m.l + i * bw + gap / 2, w = bw - gap, top = y(v), h = y(y0) - top, r = Math.min(4, w / 2, h);
+      s += `<path data-i="${i}" d="M${x},${y(y0)} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${y(y0)} Z" style="fill:${o.colorFn ? o.colorFn(v, i) : o.c}"/>`;
+    });
+    const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 64))));
+    o.labels.forEach((l, i) => { if (i % every === 0) s += `<text x="${m.l + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle">${esc(o.xFmt ? o.xFmt(l) : l)}</text>`; });
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(y0)}" y2="${y(y0)}" style="stroke:var(--axis)"/>`;
+    if (o.ref) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(o.ref.v)}" y2="${y(o.ref.v)}" style="stroke:var(--ink-2);stroke-dasharray:3 4"/><text x="${o.refLeft ? m.l + 4 : W - m.r}" y="${y(o.ref.v) - 5}" text-anchor="${o.refLeft ? "start" : "end"}" class="lbl" style="paint-order:stroke;stroke:var(--surface);stroke-width:4px">${esc(o.ref.label)}</text>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${s}</svg>`;
+    el.firstChild.addEventListener("pointermove", e => {
+      const i = e.target.dataset?.i; if (i == null) return hideTip();
+      showTip(e, o.tipTitle ? o.tipTitle(+i) : o.labels[i], [{ c: o.colorFn ? o.colorFn(o.values[i], +i) : o.c, k: o.name || "Value", v: `${fmt(o.values[i], o.d ?? 1)} ${o.unit || ""}` }].concat(o.tipExtra ? o.tipExtra(+i) : []));
+    });
+    el.firstChild.addEventListener("pointerleave", hideTip);
+  });
+}
+
+/* Waterfall. steps = [{label, v, total:bool}] */
+function waterfall(el, o) {
+  chart(el, (el, W) => {
+    const H = o.H || 260, m = { t: 22, r: 12, b: 40, l: 48 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b, n = o.steps.length;
+    let run = 0; const bars = o.steps.map(st => {
+      if (st.total) { const b = { a: 0, b: st.v, st }; run = st.v; return b; }
+      const b = { a: run, b: run + st.v, st }; run += st.v; return b;
+    });
+    const all = bars.flatMap(b => [b.a, b.b]);
+    const ticks = niceTicks(o.yMin ?? Math.min(0, ...all), Math.max(...all), 4), y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const y = v => m.t + ih - (v - y0) / (y1 - y0) * ih;
+    const bw = iw / n, gap = Math.max(6, bw * 0.28);
+    let s = "";
+    ticks.forEach(t => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`; });
+    bars.forEach((b, i) => {
+      const x = m.l + i * bw + gap / 2, w = bw - gap, top = y(Math.max(b.a, b.b)), bot = y(Math.min(b.a, b.b));
+      const c = b.st.total ? (b.st.c || "var(--s1)") : (b.st.v < 0 ? o.neg : o.pos);
+      s += `<rect data-i="${i}" x="${x}" y="${top}" width="${w}" height="${Math.max(1, bot - top)}" rx="3" style="fill:${c}"/>`;
+      if (i < n - 1) { const yy = y(b.b); s += `<line x1="${x + w}" x2="${x + bw}" y1="${yy}" y2="${yy}" style="stroke:var(--axis);stroke-dasharray:2 3"/>`; }
+      s += `<text class="val" x="${x + w / 2}" y="${top - 6}" text-anchor="middle">${b.st.total ? "" : b.st.v > 0 ? "+" : "−"}${fmt(Math.abs(b.st.v), o.d ?? 0)}</text>`;
+      const words = b.st.label.split(" "), lines = []; let cur = "";
+      const maxCh = Math.max(6, Math.floor(bw / 6.4));
+      words.forEach(wd => { if ((cur + " " + wd).trim().length > maxCh && cur) { lines.push(cur); cur = wd; } else cur = (cur + " " + wd).trim(); });
+      lines.push(cur);
+      lines.slice(0, 2).forEach((ln, k) => { s += `<text class="lbl" x="${x + w / 2}" y="${H - m.b + 16 + k * 14}" text-anchor="middle">${esc(k === 1 && lines.length > 2 ? ln + "…" : ln)}</text>`; });
+    });
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--axis)"/>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${s}</svg>`;
+    el.firstChild.addEventListener("pointermove", e => {
+      const i = e.target.dataset?.i; if (i == null) return hideTip();
+      const b = bars[i]; showTip(e, b.st.label, [{ k: b.st.total ? "Total" : "Change", v: `${fmt(b.st.v, o.d ?? 0)} ${o.unit}` }].concat(b.st.detail ? [{ k: "Basis", v: b.st.detail }] : []));
+    });
+    el.firstChild.addEventListener("pointerleave", hideTip);
+  });
+}
+
+function hbars(el, items, o = {}) {
+  const mx = o.max ?? Math.max(...items.map(i => i.v));
+  el.innerHTML = items.map(i => `<div class="bar-row"><span class="name">${i.html || esc(i.k)}</span><span class="bar-track"><span class="bar-fill" style="width:${(i.v / mx * 100).toFixed(1)}%;background:${i.c || "var(--s1)"}"></span></span><span class="v">${i.label ?? fmt(i.v, o.d ?? 0)}</span></div>`).join("");
+}
+
+function table(el, cols, rows) {
+  el.innerHTML = `<thead><tr>${cols.map(c => `<th class="${c.n ? "n" : ""}">${esc(c.h)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${cols.map(c => `<td class="${c.n ? "n" : ""}">${c.f ? c.f(r) : esc(r[c.k])}</td>`).join("")}</tr>`).join("")}</tbody>`;
+}
+
+const ICON = {
+  critical: `<svg viewBox="0 0 14 14"><path d="M7 1 L13 12 H1 Z" style="fill:var(--critical)"/><path d="M7 5v3.5M7 10.2v.3" style="stroke:#fff;stroke-width:1.6;stroke-linecap:round"/></svg>`,
+  warning: `<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" style="fill:var(--warning)"/><path d="M7 3.8v4M7 10v.3" style="stroke:#1a1a19;stroke-width:1.6;stroke-linecap:round"/></svg>`,
+  good: `<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" style="fill:var(--good)"/><path d="M4.3 7.2l1.8 1.8 3.6-3.8" style="fill:none;stroke:#fff;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></svg>`,
+  idle: `<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.3" style="fill:none;stroke:var(--muted);stroke-width:1.5"/><path d="M5 7h4" style="stroke:var(--muted);stroke-width:1.5;stroke-linecap:round"/></svg>`,
+};
+const sevHtml = s => {
+  const map = { "CRITICAL ANOMALY": ["critical", "Critical"], "WARNING": ["warning", "Warning"], "STANDBY REVIEW": ["warning", "Standby review"], "NORMAL": ["good", "Normal"], "IDLE STATE": ["idle", "Idle"] };
+  const [ic, label] = map[s] || ["idle", s];
+  return `<span class="sev">${ICON[ic]}${esc(label)}</span>`;
+};
+
+/* ---------- derived figures ---------- */
+const daily = D.daily, last = daily[daily.length - 1], K = D.kpis;
+const kv = name => K[name]?.value;
+const H = D.hourly, NH = H.t.length;
+const stLbl = H.status_labels;
+const eqCrit = H.eqs.filter(v => stLbl[v] === "CRITICAL ANOMALY").length;
+const eqWarn = H.eqs.filter(v => stLbl[v] === "WARNING").length;
+const standby = H.ens.filter(v => stLbl[v] === "STANDBY REVIEW").length;
+const coverage = D.dq.verification.Verified / D.dq.records;
+const mrvReady = coverage >= 0.95;
+
+/* ---------- header ---------- */
+$("#statusRow").innerHTML = `
+  <span class="pill"><i class="dot" style="background:${mrvReady ? "var(--good)" : "var(--warning)"}"></i>${mrvReady ? "Ready for review" : "Check data quality"}</span>
+  <span class="pill"><i class="dot" style="background:var(--critical)"></i>${eqCrit} critical alert${eqCrit === 1 ? "" : "s"}</span>
+  <span class="pill src">Latest day ${dLabel(last.date)} 2026</span>`;
+
+/* ---------- tabs ---------- */
+const TABS = $$(".tab").map(b => b.dataset.tab);
+function selectTab(t, push) {
+  if (!TABS.includes(t)) t = "overview";
+  $$(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+  $$(".view").forEach(v => { v.hidden = v.dataset.view !== t; });
+  try { localStorage.setItem("dv-tab", t); } catch (e) {}
+  if (push && location.hash !== "#" + t) history.replaceState(null, "", "#" + t);
+  renders.forEach(f => f());
+}
+$("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) selectTab(b.dataset.tab, true); });
+$("#tabs").addEventListener("keydown", e => {
+  if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const i = TABS.indexOf($(".tab[aria-selected=true]").dataset.tab), j = (i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
+  selectTab(TABS[j], true); $(`.tab[data-tab=${TABS[j]}]`).focus();
+});
+
+/* ---------- OVERVIEW ---------- */
+$("#snapSub").textContent = `100 TPD aluminium dross processing line. Latest available day is ${dLabel(last.date)} 2026; period totals cover 1–30 September.`;
+function spark(vals, c) {
+  const w = 120, h = 28, mn = Math.min(...vals), mx = Math.max(...vals), x = i => i * w / (vals.length - 1), y = v => h - 3 - (v - mn) / (mx - mn || 1) * (h - 6);
+  const d = vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w},${h} L0,${h} Z" style="fill:${c};opacity:.12"/><path d="${d}" style="fill:none;stroke:${c};stroke-width:1.5;vector-effect:non-scaling-stroke"/></svg>`;
+}
+const tile = (k, v, unit, d, sp) => `<div class="tile"><span class="k">${k}</span><span class="v">${v}<small>${unit}</small></span>${d ? `<span class="d">${d}</span>` : ""}${sp || ""}</div>`;
+const col = k => daily.map(d => d[k]);
+$("#latestTiles").innerHTML =
+  tile("Tonnes processed", fmt(last.t, 1), "t", `30-day avg ${fmt(mean(col("t")), 1)} t`, spark(col("t"), "var(--s1)")) +
+  tile("Energy consumed", fmt(last.kwh), "kWh", `30-day avg ${fmt(mean(col("kwh")))} kWh`, spark(col("kwh"), "var(--s1)")) +
+  tile("SEC", fmt(last.sec, 2), "kWh/t", `Benchmark 32 · target 26`, spark(col("sec"), "var(--s2)")) +
+  tile("CO₂e per tonne", fmt(last.co2t, 2), "kg/t", `at 0.716 kg CO₂e/kWh`, spark(col("co2t"), "var(--s2)")) +
+  tile("Recovery rate", fmt(last.rec, 1), "%", `Baseline 82% · target 84%`, spark(col("rec"), "var(--s3)")) +
+  tile("Availability", fmt(last.avail, 1), "%", `Target 95%`, spark(col("avail"), "var(--s3)"));
+$("#periodTiles").innerHTML =
+  tile("30-day throughput", fmt(kv("Dataset throughput")), "t", `${fmt(kv("Average daily throughput"), 1)} t/day average`) +
+  tile("Baseline electricity", fmt(kv("Baseline electricity")), "kWh", `SEC ${fmt(kv("Baseline SEC"), 2)} kWh/t`) +
+  tile("Baseline emissions", fmt(kv("Baseline emissions") / 1000, 1), "t CO₂e", `30 days`) +
+  tile("Energy saving potential", fmt(kv("Energy saving")), "kWh", `<span class="delta-good">−${fmt(kv("Energy reduction"), 1)}%</span> SEC under scenario`) +
+  tile("Cost saving potential", inr(kv("Energy saving") * D.business.tariff), "", `per 30 days at ₹${D.business.tariff}/kWh`) +
+  tile("CO₂e avoided (scenario)", fmt(kv("CO2e avoided") / 1000, 1), "t", `per 30 days, throughput preserved`);
+
+const labels = daily.map(d => d.date);
+legend($("#secLegend"), [{ k: "Baseline SEC (measured)", c: "var(--s2)" }, { k: "Optimized SEC (scenario)", c: "var(--s1)", dash: true }]);
+lineChart($("#secChart"), {
+  labels, xFmt: dLabel, unit: "kWh/t", d: 2, yMin: 24, yMax: 34, td: 0, H: 260,
+  series: [{ name: "Baseline", values: col("sec"), c: "var(--s2)" }, { name: "Optimized", values: col("sec_opt"), c: "var(--s1)", dash: true }],
+  ref: { v: 32, label: "32 kWh/t benchmark" }, refBelow: true,
+  tipTitle: i => `${dLabel(labels[i])} 2026`,
+  tipExtra: i => [{ k: "Energy saved", v: `${fmt(daily[i].saved)} kWh` }],
+  aria: "Daily SEC baseline versus optimized scenario",
+});
+table($("#dailyTable"), [
+  { h: "Date", f: r => dLabel(r.date) }, { h: "Tonnes", n: 1, f: r => fmt(r.t, 1) }, { h: "kWh", n: 1, f: r => fmt(r.kwh) },
+  { h: "SEC", n: 1, f: r => fmt(r.sec, 2) }, { h: "Opt. SEC", n: 1, f: r => fmt(r.sec_opt, 2) }, { h: "Recovery %", n: 1, f: r => fmt(r.rec, 1) },
+  { h: "CO₂e kg", n: 1, f: r => fmt(r.co2) }, { h: "Avail. %", n: 1, f: r => fmt(r.avail, 1) }, { h: "Downtime min", n: 1, f: r => fmt(r.down) },
+], daily);
+barChart($("#tputChart"), {
+  labels, values: col("t"), c: "var(--s1)", unit: "t", d: 1, xFmt: dLabel, name: "Throughput",
+  ref: { v: 100, label: "100 TPD design" }, tipTitle: i => `${dLabel(labels[i])} 2026`,
+  tipExtra: i => [{ k: "Availability", v: `${fmt(daily[i].avail, 1)} %` }, { k: "Downtime", v: `${fmt(daily[i].down)} min` }],
+});
+legend($("#recLegend"), [{ k: "Measured", c: "var(--s3)" }, { k: "Optimized (scenario)", c: "var(--s1)", dash: true }]);
+lineChart($("#recChart"), {
+  labels, xFmt: dLabel, unit: "%", d: 2, yMin: 80, yMax: 86, H: 220,
+  series: [{ name: "Measured", values: col("rec"), c: "var(--s3)" }, { name: "Optimized", values: col("rec_opt"), c: "var(--s1)", dash: true }],
+  ref: { v: 82, label: "82% baseline" }, tipTitle: i => `${dLabel(labels[i])} 2026`,
+});
+$("#scopeNote").innerHTML = `<b>Two sources, two scopes.</b> The workbook is a synthetic 30-day hourly dataset for a 100 TPD dross processing line and drives the Overview, Energy, Operations and Data quality tabs. The hackathon submission describes dMRV for compressed biogas plants, with credit rules, a registry and a business model, and drives the Carbon credits and Rollout tabs. Each view names its source.`;
+
+/* ---------- ENERGY ---------- */
+const pri = s => s >= 25 ? "High" : s >= 18 ? "Medium" : "Low";
+hbars($("#equipBars"), D.equipment.map(e => ({
+  html: `${esc(e.name)} <span class="chip ${pri(e.share) === "High" ? "hi" : ""}">${pri(e.share)}</span>`, v: e.share,
+  label: `${fmt(e.share)}% · ${fmt(e.sec, 2)} kWh/t`,
+  c: pri(e.share) === "High" ? "var(--s2)" : "var(--s1)",
+})), { max: 40 });
+const ints = D.interventions;
+const SHORT = { "Reduce idle equipment operation": "Idle", "Shredder operating optimization": "Shredder", "Conveyor scheduling": "Conveyor", "Sorting optimization": "Sorting", "Preventive maintenance": "Maint.", "Other process optimization": "Other" };
+const baseSec = 32.26, optSec = +(baseSec - sum(ints.map(i => i.saving))).toFixed(2);
+waterfall($("#bridgeChart"), {
+  unit: "kWh/t", d: 1, yMin: 0, neg: "var(--s3)", pos: "var(--s2)", H: 280,
+  steps: [{ label: "Baseline", v: baseSec, total: true, c: "var(--s2)" }]
+    .concat(ints.map(i => ({ label: SHORT[i.name] || i.name, v: -i.saving, detail: `${i.name}: ${i.evidence}` })))
+    .concat([{ label: "Optimized", v: optSec, total: true, c: "var(--s1)" }]),
+});
+table($("#intTable"), [
+  { h: "Intervention", f: r => `<b>${esc(r.name)}</b><div class="sub">${esc(r.logic)}</div>` },
+  { h: "kWh/t saved", n: 1, f: r => fmt(r.saving, 1) },
+  { h: "Evidence", k: "evidence" }, { h: "KPI", k: "kpi" },
+  { h: "Priority", f: r => `<span class="chip ${r.priority === "High" ? "hi" : ""}">${esc(r.priority)}</span>` },
+  { h: "Owner", k: "owner" },
+], ints);
+barChart($("#savedChart"), {
+  labels, values: col("saved"), c: "var(--s3)", unit: "kWh", d: 0, xFmt: dLabel, name: "Energy saved",
+  tipTitle: i => `${dLabel(labels[i])} 2026`,
+  tipExtra: i => [{ k: "CO₂e avoided", v: `${fmt(daily[i].co2_avoided)} kg` }, { k: "Optimized SEC", v: `${fmt(daily[i].sec_opt, 2)} kWh/t` }],
+});
+const B = { ...D.business };
+const bcFields = [
+  ["tariff", "Tariff (₹/kWh)", 0.5], ["capex", "System CAPEX (₹)", 50000], ["software", "Software / analytics (₹/yr)", 10000],
+  ["maintenance", "Maintenance / support (₹/yr)", 10000], ["days", "Operating days / year", 5], ["grid_ef", "Grid factor (kg CO₂e/kWh)", 0.001],
+];
+$("#bcForm").innerHTML = bcFields.map(([k, l, st]) => `<label class="field" for="bc-${k}">${l}<input type="number" id="bc-${k}" data-k="${k}" step="${st}" min="0" value="${B[k]}"></label>`).join("");
+function calcBC() {
+  const red = (B.sec_base - B.sec_opt) / B.sec_base, kwh = (B.sec_base - B.sec_opt) * B.tpd * B.days, rs = kwh * B.tariff, net = rs - B.software - B.maintenance;
+  const pb = net > 0 ? B.capex / net : null;
+  $("#bcOut").innerHTML = [
+    ["SEC reduction", `${fmt(red * 100, 1)}%`], ["Annual energy saved", `${fmt(kwh / 1000, 1)} MWh`], ["Annual electricity saving", inr(rs)],
+    ["Annual net saving", inr(net)], ["Simple payback", pb ? `${fmt(pb * 12, 1)} months` : "No payback"], ["Annual ROI", B.capex > 0 ? `${fmt(net / B.capex * 100)}%` : "–"],
+    ["CO₂e avoided / yr", `${fmt(kwh * B.grid_ef / 1000, 1)} t`],
+  ].map(([k, v]) => `<div><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+}
+$("#bcForm").addEventListener("input", e => { const k = e.target.dataset.k; if (k) { B[k] = parseFloat(e.target.value) || 0; calcBC(); } });
+calcBC();
+
+/* ---------- OPERATIONS ---------- */
+const days = daily.map(d => d.date);
+$("#alertTiles").innerHTML =
+  tile(`${ICON.critical} Critical equipment`, eqCrit, "hr", eqCrit ? "15 Sep 13:00 · overload or blockage" : "none") +
+  tile(`${ICON.warning} Equipment warnings`, eqWarn, "hr", "score 45–69") +
+  tile(`${ICON.warning} Standby energy reviews`, standby, "hr", "idle hours with unusual kWh") +
+  tile(`${ICON.idle} Idle hours`, H.state.filter(s => s === 0).length, "hr", "00:00–03:59 daily, no fault alarms") +
+  tile("Running hours", H.state.filter(s => s === 2).length, "hr", `plus ${H.state.filter(s => s === 1).length} startup, ${H.state.filter(s => s === 3).length} shutdown`);
+$$("#alertTiles .k svg").forEach(s => { s.style.width = "13px"; s.style.height = "13px"; s.style.verticalAlign = "-2px"; s.style.marginRight = "4px"; });
+
+const METRICS = {
+  sec: { k: "SEC", unit: "kWh/t", d: 1, get: i => H.sec[i] },
+  vib: { k: "Vibration", unit: "mm/s", d: 2, get: i => H.state[i] === 0 ? null : H.vib[i] },
+  curr: { k: "Motor current", unit: "A", d: 1, get: i => H.state[i] === 0 ? null : H.curr[i] },
+  eq: { k: "Equipment score", unit: "/100", d: 0, get: i => H.state[i] === 0 ? null : H.eq[i] },
+  en: { k: "Energy score", unit: "/100", d: 0, get: i => H.en[i] },
+};
+let hmKey = "sec", selDay = 14;
+$("#hmMetric").innerHTML = Object.entries(METRICS).map(([k, m]) => `<button data-k="${k}" aria-pressed="${k === hmKey}">${m.k}</button>`).join("");
+const SEQ = [0, 1, 2, 3, 4, 5, 6].map(i => `var(--seq-${i})`);
+const STATE_NAMES = ["Idle", "Startup", "Running", "Shutdown"];
+function heatmap() {
+  chart($("#heatmap"), (el, W) => {
+    const M = METRICS[hmKey], m = { t: 6, r: 6, b: 24, l: 40 };
+    const vals = Array.from({ length: NH }, (_, i) => M.get(i)).filter(v => v != null);
+    let mn = Math.min(...vals), mx = Math.max(...vals);
+    if (hmKey === "sec") { mn = 28; mx = 38; }
+    const cw = (W - m.l - m.r) / 30, ch = 13, Hh = m.t + 24 * ch + m.b;
+    const bin = v => Math.max(0, Math.min(6, Math.floor((v - mn) / (mx - mn || 1) * 7)));
+    let s = "";
+    for (let d = 0; d < 30; d++) for (let h = 0; h < 24; h++) {
+      const i = d * 24 + h, v = M.get(i), x = m.l + d * cw, y = m.t + h * ch;
+      const crit = stLbl[H.eqs[i]] === "CRITICAL ANOMALY";
+      const fill = v == null ? "var(--idle)" : SEQ[bin(v)];
+      s += `<rect data-i="${i}" x="${x + 1}" y="${y + 1}" width="${cw - 2}" height="${ch - 2}" rx="2" style="fill:${fill}${crit ? ";stroke:var(--critical);stroke-width:2.5" : ""}"/>`;
+    }
+    s += `<rect x="${m.l + selDay * cw}" y="${m.t}" width="${cw}" height="${24 * ch}" rx="2" style="fill:none;stroke:var(--ink);stroke-width:1.5"/>`;
+    [0, 4, 8, 12, 16, 20].forEach(h => { s += `<text x="${m.l - 6}" y="${m.t + h * ch + ch - 3}" text-anchor="end">${String(h).padStart(2, "0")}:00</text>`; });
+    const every = cw < 18 ? 5 : cw < 30 ? 2 : 1;
+    for (let d = 0; d < 30; d += every) s += `<text x="${m.l + d * cw + cw / 2}" y="${Hh - 6}" text-anchor="middle">${d + 1}</text>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" height="${Hh}" style="cursor:pointer">${s}</svg>`;
+    const svg = el.firstChild;
+    svg.addEventListener("pointermove", e => {
+      const i = e.target.dataset?.i; if (i == null) return hideTip();
+      const d = Math.floor(i / 24), h = i % 24, v = M.get(+i);
+      showTip(e, `${dLabel(days[d])}, ${String(h).padStart(2, "0")}:00`, [
+        { k: M.k, v: v == null ? "idle" : `${fmt(v, M.d)} ${M.unit}` }, { k: "State", v: STATE_NAMES[H.state[i]] },
+        { k: "Throughput", v: `${fmt(H.t[i], 2)} t` }, { k: "Equipment", v: stLbl[H.eqs[i]].toLowerCase() }, { k: "Energy", v: stLbl[H.ens[i]].toLowerCase() },
+      ]);
+    });
+    svg.addEventListener("pointerleave", hideTip);
+    svg.addEventListener("click", e => { const i = e.target.dataset?.i; if (i != null) { selDay = Math.floor(i / 24); $("#daySel").value = selDay; rerenderHeat(); traces(); } });
+    const steps = SEQ.map((c, k) => `<i class="sw box" style="background:${c};width:18px;border-radius:0"></i>`).join("");
+    $("#hmLegend").innerHTML = `<span>${fmt(mn, M.d)}</span><span style="gap:0">${steps}</span><span>${fmt(mx, M.d)} ${M.unit}</span><span><i class="sw box" style="background:var(--idle)"></i>Idle / not applicable</span><span><i class="sw box" style="background:transparent;border:2px solid var(--critical)"></i>Critical equipment alert</span>`;
+  });
+}
+$("#hmMetric").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; hmKey = b.dataset.k; $$("#hmMetric button").forEach(x => x.setAttribute("aria-pressed", x === b)); rerenderHeat(); });
+let heatmapRender;
+function rerenderHeat() { const idx = renders.indexOf(heatmapRender); if (idx >= 0) renders.splice(idx, 1); heatmap(); heatmapRender = renders[renders.length - 1]; }
+heatmap(); heatmapRender = renders[renders.length - 1];
+
+$("#daySel").innerHTML = days.map((d, i) => `<option value="${i}">${dLabel(d)} 2026</option>`).join("");
+$("#daySel").value = selDay;
+$("#daySel").addEventListener("change", e => { selDay = +e.target.value; rerenderHeat(); traces(); });
+const cfg = Object.fromEntries(D.anomaly_cfg.map(c => [c.metric, c]));
+let traceRenders = [];
+function traces() {
+  traceRenders.forEach(r => { const i = renders.indexOf(r); if (i >= 0) renders.splice(i, 1); });
+  const base = selDay * 24, hrs = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`);
+  const idleSpans = []; let a = null;
+  for (let h = 0; h < 24; h++) { const idle = H.state[base + h] === 0; if (idle && a == null) a = h; if (!idle && a != null) { idleSpans.push([a, h - 1]); a = null; } }
+  if (a != null) idleSpans.push([a, 23]);
+  const defs = [
+    ["Motor current", "curr", "A", "Motor_Current_A", 1], ["Vibration", "vib", "mm/s", "Vibration_mm_s", 2],
+    ["Process temperature", "temp", "°C", "Temperature_C", 1], ["SEC", "sec", "kWh/t", "SEC_kWh_t", 1],
+  ];
+  $("#dayTitle").textContent = `Sensor traces · ${dLabel(days[selDay])} 2026`;
+  $("#traces").innerHTML = defs.map(([t, k]) => `<div><div class="sub" style="font-weight:600;color:var(--ink)">${t}</div><div class="chart" id="tr-${k}"></div></div>`).join("");
+  const before = renders.length;
+  defs.forEach(([t, k, unit, ck, d]) => {
+    const vals = hrs.map((_, h) => H[k][base + h]);
+    const c = cfg[ck];
+    const marks = []; hrs.forEach((_, h) => { if (stLbl[H.eqs[base + h]] === "CRITICAL ANOMALY" && vals[h] != null) marks.push({ i: h, v: vals[h] }); });
+    const nonNull = vals.filter(v => v != null);
+    lineChart($(`#tr-${k}`), {
+      labels: hrs, unit, d, H: 170, td: k === "vib" ? 1 : 0, noEnd: true,
+      yMin: Math.min(c.nl, ...nonNull), yMax: Math.max(c.nh, ...nonNull),
+      series: [{ name: t, values: vals, c: "var(--s1)" }], band: { lo: c.nl, hi: c.nh }, shade: idleSpans, marks,
+      xFmt: (l, i) => i % 4 === 0 ? l : "", tipTitle: i => `${hrs[i]} · ${STATE_NAMES[H.state[base + i]]}`,
+      tipExtra: i => [{ k: "Normal band", v: `${c.nl}–${c.nh} ${unit}` }],
+    });
+  });
+  traceRenders = renders.slice(before);
+}
+traces();
+const runIdx = H.state.map((s, i) => s === 2 ? i : -1).filter(i => i >= 0);
+const vibOver = runIdx.filter(i => H.vib[i] > cfg.Vibration_mm_s.nh).length / runIdx.length;
+const curOver = runIdx.filter(i => H.curr[i] > cfg.Motor_Current_A.nh).length / runIdx.length;
+$("#envNote").innerHTML = `<b>Envelope check.</b> In running hours, vibration is above its 3.5 mm/s normal ceiling ${fmt(vibOver * 100)}% of the time and motor current is above 90 A ${fmt(curOver * 100)}% of the time, yet only one hour crosses the critical score. This is why 419 running hours carry the "high load and vibration" diagnosis note. Either the shredder runs hot against its envelope, or the normal band in Anomaly_Config is set too tight for this line; it is worth confirming before the pilot.`;
+
+let alertSev = "all";
+const AF = [["all", "All"], ["CRITICAL ANOMALY", "Critical"], ["STANDBY REVIEW", "Standby review"]];
+$("#alertFilter").innerHTML = AF.map(([k, l]) => `<button data-k="${k}" aria-pressed="${k === alertSev}">${l} (${k === "all" ? D.alerts.length : D.alerts.filter(a => a.sev === k).length})</button>`).join("");
+function alertsTable() {
+  const rows = D.alerts.filter(a => alertSev === "all" || a.sev === alertSev).sort((a, b) => (a.sev === "CRITICAL ANOMALY" ? -1 : 0) - (b.sev === "CRITICAL ANOMALY" ? -1 : 0) || a.ts.localeCompare(b.ts));
+  table($("#alertTable"), [
+    { h: "Time", f: r => `<span class="mono">${esc(r.ts.slice(5))}</span>` }, { h: "Severity", f: r => sevHtml(r.sev) },
+    { h: "State", f: r => `<span class="chip">${esc(r.state)}</span>` }, { h: "Equip.", n: 1, f: r => r.eq }, { h: "Energy", n: 1, f: r => r.en },
+    { h: "Temp °C", n: 1, f: r => fmt(r.temp, 1) }, { h: "Current A", n: 1, f: r => fmt(r.curr, 1) }, { h: "Vib mm/s", n: 1, f: r => fmt(r.vib, 2) },
+    { h: "Recommended action", f: r => `<span class="sub">${esc(r.action)}</span>` },
+  ], rows);
+}
+$("#alertFilter").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; alertSev = b.dataset.k; $$("#alertFilter button").forEach(x => x.setAttribute("aria-pressed", x === b)); alertsTable(); });
+alertsTable();
+table($("#cfgTable"), [
+  { h: "Metric", f: r => esc(r.metric.replace(/_/g, " ")) }, { h: "Normal", n: 1, f: r => `${r.nl}–${r.nh}` },
+  { h: "Critical", n: 1, f: r => `<${r.cl} / >${r.ch}` }, { h: "Weight", n: 1, f: r => fmt(r.w * 100) + "%" },
+], D.anomaly_cfg);
+$("#bandLegend").innerHTML = `<span>${ICON.good.replace("<svg", '<svg width="14" height="14"')} Normal 0–44</span><span>${ICON.warning.replace("<svg", '<svg width="14" height="14"')} Warning 45–69</span><span>${ICON.critical.replace("<svg", '<svg width="14" height="14"')} Critical 70–100</span>`;
+const stateColors = ["var(--muted)", "var(--s4)", "var(--s1)", "var(--s7)"];
+hbars($("#stateBars"), STATE_NAMES.map((n, k) => ({ k: n, v: H.state.filter(s => s === k).length, c: stateColors[k] })), { max: NH });
+const diagShort = { "Plant idle / scheduled downtime; no equipment-performance anomaly generated.": "Idle, scheduled downtime" };
+hbars($("#diagBars"), H.diag_labels.map((l, k) => ({ k: diagShort[l] || l, v: H.diag.filter(v => v === k).length, c: l.startsWith("Possible") ? "var(--critical)" : l.startsWith("High") ? "var(--s2)" : "var(--s1)" })).sort((a, b) => b.v - a.v), { max: NH });
+
+/* ---------- DATA QUALITY ---------- */
+const dq = D.dq;
+$("#dqTiles").innerHTML =
+  tile("Records assessed", fmt(dq.records), "", `${dq.sensors.length} channels × ${dq.hours} hours`) +
+  tile("Verification coverage", fmt(coverage * 100, 1), "%", mrvReady ? `${ICON.good.replace("<svg", '<svg width="13" height="13" style="vertical-align:-2px"')} meets the 95% review threshold` : "below the 95% threshold") +
+  tile("Valid records", fmt(dq.status.Valid), "", `${fmt(dq.status.Missing)} missing or estimated`) +
+  tile("Outliers flagged", fmt(dq.sensors.reduce((s, x) => s + x.outliers, 0)), "", "range checks passed") +
+  tile("Calibration", fmt(dq.sensors.reduce((s, x) => s + x.cal_valid, 0) / dq.records * 100), "%", "valid · last calibrated 1 Jul 2026");
+hbars($("#dqBars"), dq.sensors.map(s => ({
+  html: `${esc(s.measure)} <span class="mono muted" style="font-size:12px">${esc(s.sensor)}</span>`, v: s.valid + s.missing,
+  label: `${fmt(s.valid / (s.valid + s.missing) * 100, 1)}%`,
+})), { max: 720 });
+$$("#dqBars .bar-row").forEach((row, k) => {
+  const s = dq.sensors[k];
+  row.querySelector(".bar-track").outerHTML = `<span class="stack"><i style="flex:${s.valid};background:var(--s1)" title="${s.valid} valid"></i>${s.missing ? `<i style="flex:${s.missing};background:var(--s4)" title="${s.missing} missing"></i>` : ""}</span>`;
+});
+$("#dqNote").innerHTML = `<b>All ${fmt(dq.status.Missing)} missing records fall in idle hours.</b> Moisture and SEC are undefined when throughput is zero, so the gaps are structural. During startup, running and shutdown every channel is 100% complete. Under rule V3 these idle gaps would not be flagged, since V3 applies only while the plant runs.`;
+table($("#sensorTable"), [
+  { h: "Sensor", f: r => `<span class="mono">${esc(r.sensor)}</span>` }, { h: "Equipment", f: r => `<span class="sub">${esc(r.equipment)}</span>` },
+  { h: "Unit", k: "unit" }, { h: "Source", f: r => `<span class="chip">${esc(r.source)}</span>` }, { h: "Last cal.", f: r => `<span class="mono">${esc(r.last_cal)}</span>` },
+], dq.sensors);
+const V = [
+  ["V1", "Completeness", "Required field missing or device signature fails", "Rejected at ingest", "No signed batches yet; the workbook has no signature field."],
+  ["V2", "Physical range", "Value outside physical limits", "Flagged", "0 outliers flagged across 5,040 records."],
+  ["V3", "Missing data", "No reading for over 15 min while the plant runs", "Gap flagged", "0 running-hour gaps. 240 idle-hour gaps are structural."],
+  ["V4", "Energy balance", "Sub-meters differ from main incomer by over 5%", "Period flagged", "Only the main meter is logged; equipment split is a baseline profile."],
+  ["V5", "Bill reconciliation", "Monthly kWh differs from utility bill by over 3%", "Month flagged", "Needs the September bill against 95,844 kWh metered."],
+  ["V6", "Methane balance", "CH₄ out plus losses exceeds CH₄ in", "Period flagged", "CBG plants only."],
+  ["V7", "Yield range", "Biogas per tonne outside the feedstock's range", "Period flagged", "CBG plants only. Analogue here: recovery band 78–86%."],
+  ["V8", "Dispatch match", "Dispatch meter differs from invoices by over 2%", "Period flagged", "CBG plants only."],
+  ["V9", "Quality", "Product methane below IS 16087 or contract limit", "Gas excluded", "CBG plants only (90% CH₄ minimum, 95% proposed)."],
+  ["V10", "Clock integrity", "Timestamps out of order or drift over 60 s", "Batch flagged", "720 hourly timestamps, in order, no gaps."],
+];
+table($("#vRules"), [
+  { h: "ID", f: r => `<span class="rule-id">${r[0]}</span>` }, { h: "Check", f: r => `<b>${r[1]}</b>` }, { h: "Triggers when", f: r => esc(r[2]) },
+  { h: "Result", f: r => `<span class="chip">${esc(r[3])}</span>` }, { h: "In this dataset", f: r => `<span class="sub">${esc(r[4])}</span>` },
+], V);
+table($("#rRules"), [{ h: "ID", f: r => `<span class="rule-id">${r[0]}</span>` }, { h: "Rule", f: r => esc(r[1]) }], [
+  ["R1", "A flagged reading leaves the credit total immediately and stays out until resolved."],
+  ["R2", "A confirmed real event, backed by independent evidence, is restored to valid."],
+  ["R3", "A sensor fault is filled from a backup: redundant meter, then invoices or bills pro-rata, then the most conservative comparable value."],
+  ["R4", "With no reliable backup, the gap earns zero credits."],
+  ["R5", "Suspected tampering is excluded permanently, logged and reported to the verifier."],
+  ["R6", "Flags unresolved at period end are treated as excluded."],
+]);
+table($("#lRules"), [{ h: "ID", f: r => `<span class="rule-id">${r[0]}</span>` }, { h: "Rule", f: r => esc(r[1]) }], [
+  ["L1", "Every reading is stored with the SHA-256 hash of its content plus the previous record's hash."],
+  ["L2", "Records are never edited or deleted. A correction is a new record with reason and approver."],
+  ["L3", "The chain is verified hourly and on every export; a break raises a critical alert and freezes issuance."],
+  ["L4", "Each period's records are summarised into a Merkle root stamped on the report and every credit."],
+  ["L5", "Auditors have read-only access to the full chain and can re-run verification."],
+]);
+
+/* ---------- CREDITS ---------- */
+const E = { cbg: 1650, ncv: 50, efFossil: 56.1, gridMWh: 3300, gridEF: 0.71, slip: 1, gwp: 28, diesel: 20000 };
+const erFields = [
+  ["cbg", "CBG sold (t/yr)", 10], ["ncv", "NCV (MJ/kg)", 0.5], ["efFossil", "Fossil EF (tCO₂/TJ)", 0.1], ["gridMWh", "Grid electricity (MWh/yr)", 50],
+  ["gridEF", "Grid EF (tCO₂/MWh)", 0.01], ["slip", "Methane slip + leaks (% of output)", 0.1], ["gwp", "GWP CH₄", 1], ["diesel", "Diesel (litres/yr)", 500],
+];
+$("#erForm").innerHTML = erFields.map(([k, l, st]) => `<label class="field" for="er-${k}">${l}<input type="number" id="er-${k}" data-k="${k}" step="${st}" min="0" value="${E[k]}"></label>`).join("");
+const R = { price: 1000, model: "own" };
+const MODELS = { own: "Purchase + subscription", portfolio: "Portfolio (5% buffer, 15% fee)", zero: "Zero capex (25% carbon share)" };
+$("#modelSeg").innerHTML = Object.entries(MODELS).map(([k, l]) => `<button data-k="${k}" aria-pressed="${k === R.model}">${l}</button>`).join("");
+$("#revForm").innerHTML = `<label class="field" for="price"><span class="row">Price per credit <b id="priceOut"></b></span><input type="range" id="price" min="250" max="3000" step="50" value="${R.price}"></label>`;
+function calcER() {
+  const fossil = E.cbg * 1000 * E.ncv / 1e6 * E.efFossil, grid = E.gridMWh * E.gridEF, slipT = E.cbg * E.slip / 100, slip = slipT * E.gwp, dsl = E.diesel * 2.68 / 1000;
+  return { fossil, grid, slipT, slip, dsl, er: Math.floor(fossil - grid - slip - dsl) };
+}
+let erRender;
+function drawER() {
+  const c = calcER();
+  const idx = renders.indexOf(erRender); if (idx >= 0) renders.splice(idx, 1);
+  waterfall($("#erChart"), {
+    unit: "tCO₂e/yr", d: 0, neg: "var(--s2)", pos: "var(--s3)", H: 270,
+    steps: [
+      { label: "Fossil fuel displaced", v: c.fossil, detail: `${fmt(E.cbg)} t × ${E.ncv} MJ/kg × ${E.efFossil}` },
+      { label: "Grid electricity", v: -c.grid, detail: `${fmt(E.gridMWh)} MWh × ${E.gridEF}` },
+      { label: "Methane slip & leaks", v: -c.slip, detail: `${fmt(c.slipT, 1)} t CH₄ × GWP ${E.gwp}` },
+      { label: "Diesel", v: -c.dsl, detail: `${fmt(E.diesel)} L × 2.68 kg/L` },
+      { label: "Net credits", v: c.er, total: true, c: "var(--s1)" },
+    ],
+  });
+  erRender = renders[renders.length - 1];
+  calcRev(c.er);
+}
+let sensRender;
+function calcRev(er) {
+  const hw = 1249000, sub = 500000;
+  const share = R.model === "portfolio" ? 0.95 * 0.85 : R.model === "zero" ? 0.75 : 1;
+  const year1 = R.model === "zero" ? 0 : hw + sub;
+  const credits = R.model === "portfolio" ? Math.floor(er * 0.95 * 0.85) : er;
+  const revenue = er * R.price * share;
+  $("#priceOut").textContent = `₹${fmt(R.price)}`;
+  $("#revOut").innerHTML = [
+    ["Credits to plant", `${fmt(credits)} /yr`], ["Annual revenue", inr(revenue)], ["Year-1 cost", year1 ? inr(year1) : "₹0 upfront"],
+    ["Payback", year1 ? (revenue > 0 ? `${fmt(year1 / revenue * 12, 1)} months` : "–") : "Immediate"],
+  ].map(([k, v]) => `<div><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  $("#modelNote").textContent = {
+    own: "Year-1 cost is the ₹12.49 lakh kit plus an assumed ₹5 lakh annual subscription. At ₹500, ₹1,000 and ₹2,000 per credit the submission gives about 24, 12 and 6 months.",
+    portfolio: "For 2–5 TPD plants pooled into one project: Credits = ER × (1 − 5% buffer) × (1 − 15% platform fee). Each plant keeps its own baseline (rule A1).",
+    zero: "Dross Vault installs at no upfront cost and keeps 25% of credit revenue for the crediting period.",
+  }[R.model];
+  const idx = renders.indexOf(sensRender); if (idx >= 0) renders.splice(idx, 1);
+  const prices = [250, 500, 750, 1000, 1500, 2000, 2500, 3000];
+  barChart($("#sensChart"), {
+    labels: prices.map(p => `₹${fmt(p)}`), values: prices.map(p => er * p * share / 1e5), unit: "lakh/yr", d: 1, H: 190, name: "Annual revenue",
+    colorFn: (v, i) => prices[i] === R.price ? "var(--s1)" : "var(--seq-1)",
+    ref: year1 ? { v: year1 / 1e5, label: `Year-1 cost ${inr(year1)}` } : null, refLeft: true,
+    tipTitle: i => `${prices[i] === R.price ? "Selected · " : ""}₹${fmt(prices[i])} per credit`,
+  });
+  sensRender = renders[renders.length - 1];
+}
+$("#erForm").addEventListener("input", e => { const k = e.target.dataset.k; if (k) { E[k] = parseFloat(e.target.value) || 0; drawER(); } });
+$("#price").addEventListener("input", e => { R.price = +e.target.value; calcRev(calcER().er); });
+$("#modelSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; R.model = b.dataset.k; $$("#modelSeg button").forEach(x => x.setAttribute("aria-pressed", x === b)); calcRev(calcER().er); });
+drawER();
+
+hbars($("#kitBars"), [
+  ["Gas flow meters (raw, off-gas, product) × 3", 450000], ["Online gas analyzer (CH₄, CO₂, H₂S, O₂)", 400000], ["Fixed methane leak detectors × 6", 150000],
+  ["Energy meters (incomer + 8 motors)", 89000], ["Digester T, P and pH probes", 50000], ["Installation and commissioning", 50000],
+  ["Weighbridge and dispatch integration", 30000], ["Edge gateway with 4G", 30000],
+].map(([k, v]) => ({ k, v, label: `₹${fmt(v)}` })));
+const MKT = [["Commissioned today", 132, 16.5, 6.6], ["Holding SATAT letters of intent", 1100, 137.5, 55], ["SATAT 5,000-plant target", 5000, 625, 250]];
+table($("#mktTable"), [
+  { h: "Segment", f: r => esc(r[0]) }, { h: "Plants", n: 1, f: r => fmt(r[1]) },
+  { h: "Hardware", n: 1, f: r => `₹${fmt(r[2], 1)} cr` }, { h: "Recurring / yr", n: 1, f: r => `₹${fmt(r[3], 1)} cr` },
+], MKT);
+hbars($("#mktBars"), MKT.map(r => ({ k: r[0], v: r[2] + r[3], label: `₹${fmt(r[2] + r[3], 1)} cr year 1`, c: "var(--s1)" })));
+
+$("#lifecycle").innerHTML = [
+  ["Pending", "Created after the period closes and every flag is resolved (G1)."],
+  ["Issued", "When the matching CCC appears in the national registry; national serial recorded (G2)."],
+  ["Transferred", "One owner at a time; balances derived from events (G3)."],
+  ["Retired / surrendered", "Final. Beneficiary and purpose recorded; certificate shows the evidence root (G4, G5).", "final"],
+].map(([b, p, c], i, a) => `<div class="step ${c || ""}"><b>${b}</b><p>${p}</p></div>${i < a.length - 1 ? '<span class="arrow" aria-hidden="true">→</span>' : ""}`).join("") +
+  `<div class="step cancel"><b>Cancelled</b><p>If a verifier or BEE finds an error; reason recorded, nothing deleted (G6). A 5% buffer covers corrections (G7).</p></div>`;
+table($("#creditRecord"), [{ h: "Field", f: r => `<b>${r[0]}</b>` }, { h: "Example", f: r => `<span class="mono">${esc(r[1])}</span>` }, { h: "Purpose", f: r => `<span class="sub">${esc(r[2])}</span>` }], [
+  ["Serial number", "DV-GHY01-2026Q3-000142", "Project, plant, vintage, sequence"],
+  ["Vintage period", "2026-07-01 to 2026-09-30", "When the reduction happened"],
+  ["Plant unit", "GHY01, Dross Vault Guwahati CBG plant", "Which plant earned it"],
+  ["Evidence root", "Merkle root of the period's ledger", "Links the credit to its sensor data"],
+  ["Monitoring report hash", "SHA-256 of the verified report", "Links the credit to the verified document"],
+  ["National registry ID", "CCC serial from Grid Controller of India", "Reconciliation with the official record"],
+]);
+$("#personas").innerHTML = [
+  ["Plant operator", "Mobile first, local language", ["Sensor health, last reading, gaps", "Today's feedstock, gas produced, CBG dispatched", "Methane balance with a green or red status", "Active flags and leak alarms with the action to take", "Calibration due dates"]],
+  ["Owner or portfolio manager", "Desktop", ["Credits this period: confirmed vs on hold, and why", "Credits by source: methane avoided, fossil displaced, minus project emissions", "Pipeline: pending, verified, issued, sold, retired", "Open flags by plant and rule, with ageing", "Revenue statement per plant"]],
+  ["Auditor or verifier", "Read-only", ["Every term of the calculation and the factors used, per period", "Reading table with hashes and a Verify chain button", "Flags and corrections log with approvers", "Credit lookup by serial with full event history", "One-click monitoring report export"]],
+].map(([t, s, li]) => `<div class="callout" style="display:grid;gap:6px;align-content:start"><b style="font-family:var(--f-display);font-size:17px;letter-spacing:.03em">${t}</b><span class="eyebrow">${s}</span><ul class="plain">${li.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`).join("");
+
+/* ---------- ROLLOUT ---------- */
+const stepList = (el, items) => { el.innerHTML = items.map(([b, p]) => `<li><span><b>${b}</b><p>${p}</p></span></li>`).join(""); };
+stepList($("#pathway"), [
+  ["Pilot", "Guwahati plant runs dMRV alongside manual records for one full monitoring period and produces its first verified report."],
+  ["Early customers", "5 to 10 plants with 2 or 3 developers; portfolio registry for smaller plants."],
+  ["Scale", "50 or more plants, with the kit bundled into new SATAT builds by EPC partners."],
+  ["Platform", "Registry offered as a service to other dMRV providers; extension to MSW and press-mud bio-CNG plants."],
+]);
+stepList($("#pipeline"), [
+  ["Feedstock arrives", "Weighbridge records gross and tare; operator tags the feedstock type; matched to the delivery note."],
+  ["Gas produced and measured", "Flow meters and analyzer log raw biogas volume and composition every minute."],
+  ["Upgraded and compressed", "Off-gas flow and CH₄ measured to quantify slip; product checked against IS 16087."],
+  ["CBG dispatched", "Dispatch meter records kg sold, matched to invoice and buyer."],
+  ["Losses and energy tracked", "Leak detectors, flare meters, energy meters and fuel logs."],
+  ["Validated and chained", "Gateway signs each batch; cloud validates and appends to the hash chain."],
+  ["Period closes", "Engine applies the methodology and stamps the report with the period's Merkle root."],
+  ["Verified and issued", "Accredited verifier reviews remotely; BEE issues CCCs; registry links each to its evidence."],
+]);
+table($("#riskTable"), [{ h: "Risk", f: r => `<b>${esc(r[0])}</b>` }, { h: "Impact", f: r => `<span class="chip">${esc(r[1])}</span>` }, { h: "Mitigation", f: r => `<span class="sub">${esc(r[2])}</span>` }], [
+  ["No approved CCTS methodology yet fits CBG methane avoidance and displacement", "Credits delayed", "Engage BEE early; map rules onto CDM-style methodologies; sell into voluntary standards meanwhile."],
+  ["Verifiers unwilling to rely on remote data", "Higher verification cost", "Read-only auditor access, re-runnable chain checks, parallel manual logs in the pilot."],
+  ["Gas meter and analyzer drift", "Wrong credits", "Calibration schedule, methane balance (V6) and dispatch match (V8), redundant metering on key flows."],
+  ["Feedstock type misreported to claim higher avoidance credits", "Overstated credits", "Delivery-note matching, yield range check (V7), periodic feedstock sampling."],
+  ["Sensor or gateway failure at remote sites", "Data gaps", "Offline buffering, conservative substitution (R3, R4), spare-parts kit."],
+  ["Low or volatile CCC prices", "Weaker revenue", "Subscription value from faster verification and operational alerts, not only credit sales."],
+]);
+table($("#cmpTable"), [{ h: "Aspect", f: r => `<b>${esc(r[0])}</b>` }, { h: "Manual MRV", f: r => `<span class="sub">${esc(r[1])}</span>` }, { h: "Dross Vault dMRV", f: r => esc(r[2]) }], [
+  ["Feedstock data", "Handwritten weighbridge slips", "Logged automatically, tagged by type"],
+  ["Gas and CBG data", "Periodic readings, invoices", "Continuous flow and composition"],
+  ["Methane loss", "Assumed or a default", "Measured continuously"],
+  ["Error and fraud detection", "Found at audit, if at all", "Flagged within minutes"],
+  ["Tamper evidence", "None", "Hash chain; any edit is detected"],
+  ["Verification", "Site visit, paper reconciliation", "Remote read-only access"],
+  ["Report preparation", "Weeks of compilation", "Generated when the period closes"],
+]);
+$("#openQs").innerHTML = [
+  "Which approved CCTS offset methodology applies to CBG plants, and does it require measured methane slip?",
+  "Which accredited verification agency will review the Guwahati pilot?",
+  "Which sensors does the Guwahati plant already have, so the kit cost can be reduced?",
+  "Which voluntary standard, if any, should be used until a CCTS methodology is approved?",
+].map(q => `<li>${esc(q)}</li>`).join("");
+table($("#assumpTable"), [{ h: "Parameter", f: r => esc(r.param) }, { h: "Value", f: r => `<span class="mono">${esc(r.value)}</span>` }], D.assumptions);
+
+addEventListener("hashchange", () => { const t = location.hash.slice(1); if (TABS.includes(t)) selectTab(t, false); });
+/* ---------- boot ---------- */
+let start = location.hash.slice(1);
+if (!TABS.includes(start)) { try { start = localStorage.getItem("dv-tab") || "overview"; } catch (e) { start = "overview"; } }
+selectTab(start, false);
+})();
+</script>
