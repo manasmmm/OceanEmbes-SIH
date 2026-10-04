@@ -3,6 +3,7 @@
 Usage:  python3 dashboard/build_data.py
 Reads   data/DrossVault_Digital_MRV_Executive_Dashboard.xlsx
 Writes  dashboard/index.html (from dashboard/src.html, replacing __DATA__)
+        site/index.html (standalone desktop website, full HTML document)
 """
 import json
 from collections import Counter
@@ -14,6 +15,20 @@ ROOT = Path(__file__).resolve().parent.parent
 XLSX = ROOT / "data" / "DrossVault_Digital_MRV_Executive_Dashboard.xlsx"
 SRC = ROOT / "dashboard" / "src.html"
 OUT = ROOT / "dashboard" / "index.html"
+SITE = ROOT / "site" / "index.html"
+
+# Standalone desktop website: the same page wrapped in a full HTML document.
+SITE_HEAD = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="DrossVault digital MRV console: energy, emissions, alerts, data quality and carbon credits.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath d='M5 22 L10 10 H24 L29 22 Z' fill='%232a78d6'/%3E%3Cpath d='M5 22 H29 L27 27 H7 Z' fill='%231f64b8'/%3E%3C/svg%3E">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+"""
 
 
 def rows(ws, header_row=1):
@@ -180,6 +195,9 @@ def main():
     html = SRC.read_text(encoding="utf-8").replace("__DATA__", blob)
     OUT.write_text(html, encoding="utf-8")
     print(f"wrote {OUT.relative_to(ROOT)} ({len(html)/1024:.0f} KB)")
+    SITE.parent.mkdir(exist_ok=True)
+    SITE.write_text(SITE_HEAD + html + "\n</body>\n</html>\n", encoding="utf-8")
+    print(f"wrote {SITE.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

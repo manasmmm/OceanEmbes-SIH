@@ -186,6 +186,25 @@ details[open] summary { margin-bottom: 10px; }
 ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink-2); }
 footer { overflow-wrap: anywhere; margin-top: 28px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
 
+/* Desktop: header becomes a fixed left sidebar with vertical navigation */
+@media (min-width: 1100px) {
+  body { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .top { position: sticky; top: 0; height: 100vh; border-bottom: 0; border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; }
+  .top-inner { height: 100%; display: flex; flex-direction: column; gap: 20px; padding: 24px 18px; }
+  .brand { flex-direction: column; align-items: stretch; gap: 16px; }
+  .brand-mark { align-items: flex-start; }
+  h1 { font-size: 25px; }
+  .status-row { flex-direction: column; align-items: flex-start; }
+  .tabs { flex-direction: column; overflow: visible; margin-top: 0; gap: 2px; }
+  .tab { text-align: left; border-bottom: 0; border-left: 3px solid transparent; border-radius: 0 4px 4px 0; padding: 10px 14px; }
+  .tab[aria-selected="true"] { border-left-color: var(--accent); background: var(--accent-wash); }
+  .side-foot { display: block; margin-top: auto; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .wrap { max-width: 1560px; margin: 0 auto; padding-inline: 32px; width: 100%; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .view { padding-top: 28px; }
+  h2 { font-size: 26px; }
+}
+.side-foot { display: none; }
 @media (max-width: 640px) {
   .wrap, .top-inner { padding-inline: 16px; }
   h1 { font-size: 24px; }
@@ -221,6 +240,7 @@ footer { overflow-wrap: anywhere; margin-top: 28px; font-size: 13px; color: var(
       <button class="tab" role="tab" data-tab="credits">Carbon credits</button>
       <button class="tab" role="tab" data-tab="rollout">Rollout &amp; risks</button>
     </nav>
+    <p class="side-foot">100 TPD dross line · 1–30 Sep 2026 (synthetic dataset)<br>CBG dMRV model · Dross Vault Guwahati pilot</p>
   </div>
 </header>
 
@@ -542,7 +562,7 @@ function lineChart(el, o) {
     const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 64))));
     o.labels.forEach((l, i) => { if (i % every === 0) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(o.xFmt ? o.xFmt(l, i) : l)}</text>`; });
     s += `<line x1="${m.l}" x2="${W - m.r}" y1="${m.t + ih}" y2="${m.t + ih}" style="stroke:var(--axis)"/>`;
-    if (o.ref) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(o.ref.v)}" y2="${y(o.ref.v)}" style="stroke:var(--ink-2);stroke-dasharray:3 4"/><text x="${W - m.r}" y="${y(o.ref.v) + (o.refBelow ? 15 : -5)}" text-anchor="end" class="lbl">${esc(o.ref.label)}</text>`;
+    if (o.ref) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(o.ref.v)}" y2="${y(o.ref.v)}" style="stroke:var(--ink-2);stroke-dasharray:3 4"/><text x="${W - m.r}" y="${y(o.ref.v) + (o.refBelow ? 15 : -5)}" text-anchor="end" class="lbl" style="paint-order:stroke;stroke:var(--surface);stroke-width:4px">${esc(o.ref.label)}</text>`;
     o.series.forEach(se => {
       let d = "", pen = false;
       se.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });

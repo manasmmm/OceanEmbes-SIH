@@ -1,7 +1,13 @@
 # OceanEmbes-SIH
 ## DrossVault dMRV dashboard
 
-`dashboard/index.html` is a self-contained dashboard (open it in a browser, no server needed) built from:
+`site/index.html` is the standalone desktop website: a single HTML file with a sidebar layout on wide screens. Open it directly in a browser, or serve it:
+
+```
+cd site && python3 -m http.server 8000   # then open http://localhost:8000
+```
+
+`dashboard/index.html` is the same page without the document wrapper (used for the published artifact). Both are built from:
 
 - `data/DrossVault_Digital_MRV_Executive_Dashboard.xlsx`: 30-day hourly MRV dataset for a 100 TPD dross processing line
 - `data/Dross_Vault_dMRV_Hackathon_Submission.pdf`: dMRV design for CBG plants (credit rules, registry, business model)
