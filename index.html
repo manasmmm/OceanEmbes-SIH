@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="DrossVault digital MRV console: energy, emissions, alerts, data quality and carbon credits.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath d='M5 22 L10 10 H24 L29 22 Z' fill='%232a78d6'/%3E%3Cpath d='M5 22 H29 L27 27 H7 Z' fill='%231f64b8'/%3E%3C/svg%3E">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>DrossVault dMRV Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control-room console. Sticky header with source + status, tab strip, then summary tiles before detail panels. */
+:root {
+  --bg: #eef1f2;
+  --surface: #ffffff;
+  --surface-2: #f6f8f9;
+  --ink: #0f1a20;
+  --ink-2: #4a5862;
+  --muted: #7a868e;
+  --grid: #e3e8eb;
+  --axis: #c2cbd0;
+  --border: rgba(15, 26, 32, 0.11);
+  --accent: #1f64b8;
+  --accent-wash: rgba(42, 120, 214, 0.10);
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --s7: #4a3aa7;
+  --idle: #dde3e6;
+  --good: #0ca30c;
+  --good-ink: #006300;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --seq-0: #cde2fb; --seq-1: #9ec5f4; --seq-2: #6da7ec; --seq-3: #3987e5; --seq-4: #256abf; --seq-5: #184f95; --seq-6: #0d366b;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1012; --surface: #161b1e; --surface-2: #1c2225; --ink: #eef2f4; --ink-2: #b4c0c7; --muted: #86939b;
+    --grid: #252c30; --axis: #3a444a; --border: rgba(255, 255, 255, 0.10); --accent: #6aa8f0; --accent-wash: rgba(57, 135, 229, 0.16);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s7: #9085e9; --idle: #252c30; --good-ink: #0ca30c;
+    --seq-0: #0d366b; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #86b6ef; --seq-6: #cde2fb;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1012; --surface: #161b1e; --surface-2: #1c2225; --ink: #eef2f4; --ink-2: #b4c0c7; --muted: #86939b;
+  --grid: #252c30; --axis: #3a444a; --border: rgba(255, 255, 255, 0.10); --accent: #6aa8f0; --accent-wash: rgba(57, 135, 229, 0.16);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s7: #9085e9; --idle: #252c30; --good-ink: #0ca30c;
+  --seq-0: #0d366b; --seq-1: #184f95; --seq-2: #1c5cab; --seq-3: #2a78d6; --seq-4: #5598e7; --seq-5: #86b6ef; --seq-6: #cde2fb;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 0 48px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: 0.01em; text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; line-height: 1.1; }
+h2 { font-size: 21px; line-height: 1.2; }
+h3 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); font-weight: 600; }
+p { margin: 0; }
+.num, td.n, .mono { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.sub { color: var(--ink-2); font-size: 14px; }
+
+/* Header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); }
+.top-inner { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 14px 0; }
+.brand { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 24px; }
+.brand-mark { display: flex; align-items: center; gap: 12px; }
+.ingot { width: 34px; height: 34px; flex: none; }
+.eyebrow { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; color: var(--muted); font-weight: 600; }
+.status-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid var(--border); background: var(--surface); white-space: nowrap; }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pill.src { text-transform: none; letter-spacing: 0; font-family: var(--f-body); font-weight: 500; color: var(--ink-2); }
+.tabs { display: flex; gap: 2px; overflow-x: auto; margin-top: 12px; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { appearance: none; border: 0; background: none; color: var(--ink-2); font-family: var(--f-display); font-size: 15px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 14px 10px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
+.tab:hover { color: var(--ink); background: var(--accent-wash); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Panels */
+.view { display: grid; gap: 16px; padding-top: 20px; }
+.view-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px 24px; }
+.view-head .sub { max-width: 70ch; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.span2 { grid-column: 1 / -1; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; min-width: 0; display: grid; gap: 12px; align-content: start; }
+.card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+.card-head .sub { font-size: 13px; }
+.note { font-size: 13px; color: var(--ink-2); border-left: 3px solid var(--axis); padding: 2px 0 2px 10px; }
+.callout { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; color: var(--ink-2); }
+.callout b { color: var(--ink); }
+
+/* Stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.tile { background: var(--surface); padding: 12px 16px 14px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.tile .k { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; font-weight: 600; color: var(--muted); }
+.tile .v { font-family: var(--f-display); font-size: 32px; font-weight: 600; line-height: 1.1; }
+.tile .v small { font-family: var(--f-body); font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 4px; }
+.tile .d { font-size: 13px; color: var(--ink-2); }
+.delta-good { color: var(--good-ink); font-weight: 600; }
+.spark { width: 100%; height: 28px; display: block; margin-top: 4px; }
+
+/* Charts */
+.chart { width: 100%; position: relative; min-width: 0; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: var(--f-data); font-size: 11px; fill: var(--muted); }
+.chart .lbl { font-family: var(--f-body); font-size: 12px; fill: var(--ink-2); font-weight: 500; }
+.chart .val { font-family: var(--f-data); font-size: 11px; fill: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; flex: none; }
+.sw.box { height: 10px; width: 10px; border-radius: 2px; }
+.sw.dash { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px) !important; }
+#tip { position: fixed; z-index: 50; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0,0,0,.14); border-radius: 6px; padding: 8px 10px; font-size: 13px; min-width: 150px; max-width: 280px; }
+#tip .t { font-family: var(--f-display); font-weight: 600; letter-spacing: .03em; margin-bottom: 4px; }
+#tip .r { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+#tip .r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+#tip .r b { font-family: var(--f-data); font-weight: 500; }
+
+/* HTML bar lists */
+.bars { display: grid; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 2fr) auto; gap: 10px; align-items: center; font-size: 14px; }
+.bar-row .name { overflow-wrap: anywhere; color: var(--ink); }
+.bar-track { height: 12px; background: var(--surface-2); border-radius: 0 4px 4px 0; position: relative; overflow: hidden; }
+.bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; background: var(--s1); }
+.bar-row .v { font-family: var(--f-data); font-size: 13px; color: var(--ink); text-align: right; white-space: nowrap; }
+.stack { display: flex; height: 12px; gap: 2px; }
+.stack > i { display: block; height: 100%; }
+.stack > i:last-child { border-radius: 0 4px 4px 0; }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-family: var(--f-display); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 600; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; position: sticky; top: 0; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+.scroll-y { max-height: 380px; overflow: auto; }
+.sev { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.sev svg { width: 14px; height: 14px; flex: none; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 12px; font-family: var(--f-display); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; background: var(--surface-2); border: 1px solid var(--border); color: var(--ink-2); white-space: nowrap; }
+.chip.hi { color: var(--ink); border-color: var(--accent); }
+.rule-id { font-family: var(--f-data); font-size: 12px; color: var(--accent); font-weight: 500; white-space: nowrap; }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); flex-wrap: wrap; }
+.seg button { appearance: none; border: 0; background: none; padding: 6px 12px; font: 600 13px var(--f-display); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+select, input[type="number"] { font: 500 14px var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+input[type="number"] { width: 100%; font-family: var(--f-data); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+label.field { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); min-width: 0; }
+label.field .row { display: flex; justify-content: space-between; gap: 8px; }
+label.field .row b { font-family: var(--f-data); font-weight: 500; color: var(--ink); }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; }
+.out { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.out > div { background: var(--surface-2); box-shadow: inset -1px -1px 0 var(--border); padding: 10px 14px; display: grid; gap: 2px; }
+.out .k { font-size: 12px; color: var(--muted); font-family: var(--f-display); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+.out .v { font-family: var(--f-display); font-size: 24px; font-weight: 600; line-height: 1.15; }
+details summary { cursor: pointer; font-family: var(--f-display); text-transform: uppercase; letter-spacing: .06em; font-size: 13px; font-weight: 600; color: var(--accent); }
+details[open] summary { margin-bottom: 10px; }
+
+/* Formula + lifecycle */
+.formula { font-family: var(--f-data); font-size: 15px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; overflow-x: auto; white-space: nowrap; }
+.formula .t-pos { color: var(--good-ink); }
+.formula .t-neg { color: var(--s2); }
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.flow .step { flex: 1 1 130px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.flow .step b { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .05em; font-size: 14px; }
+.flow .step p { font-size: 13px; color: var(--ink-2); }
+.flow .arrow { align-self: center; color: var(--muted); font-family: var(--f-data); }
+.flow .step.final { border-color: var(--good); }
+.flow .step.cancel { border-style: dashed; border-color: var(--critical); }
+.steps { display: grid; gap: 10px; counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+.steps li::before { counter-increment: s; content: counter(s); font-family: var(--f-data); font-size: 13px; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: grid; place-items: center; }
+.steps li b { font-family: var(--f-display); letter-spacing: .03em; font-size: 16px; }
+.steps li p { font-size: 14px; color: var(--ink-2); }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink-2); }
+footer { overflow-wrap: anywhere; margin-top: 28px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+
+/* Desktop: header becomes a fixed left sidebar with vertical navigation */
+@media (min-width: 1100px) {
+  body { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+  .top { position: sticky; top: 0; height: 100vh; border-bottom: 0; border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; }
+  .top-inner { height: 100%; display: flex; flex-direction: column; gap: 20px; padding: 24px 18px; }
+  .brand { flex-direction: column; align-items: stretch; gap: 16px; }
+  .brand-mark { align-items: flex-start; }
+  h1 { font-size: 25px; }
+  .status-row { flex-direction: column; align-items: flex-start; }
+  .tabs { flex-direction: column; overflow: visible; margin-top: 0; gap: 2px; }
+  .tab { text-align: left; border-bottom: 0; border-left: 3px solid transparent; border-radius: 0 4px 4px 0; padding: 10px 14px; }
+  .tab[aria-selected="true"] { border-left-color: var(--accent); background: var(--accent-wash); }
+  .side-foot { display: block; margin-top: auto; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .wrap { max-width: 1560px; margin: 0 auto; padding-inline: 32px; width: 100%; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .view { padding-top: 28px; }
+  h2 { font-size: 26px; }
+}
+.side-foot { display: none; }
+@media (max-width: 640px) {
+  .wrap, .top-inner { padding-inline: 16px; }
+  h1 { font-size: 24px; }
+  .tile .v { font-size: 26px; }
+  .bar-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .bar-row .bar-track { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill { transition: width .4s ease; }
+}
+@media (forced-colors: active) {
+  .bar-fill, .stack > i { forced-color-adjust: none; }
+}
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg class="ingot" viewBox="0 0 34 34" aria-hidden="true"><path d="M5 22 L10 10 H24 L29 22 Z" style="fill:var(--s1)"/><path d="M5 22 H29 L27 27 H7 Z" style="fill:var(--accent);opacity:.55"/><path d="M12 14 H22" style="stroke:var(--surface);stroke-width:2;stroke-linecap:round"/></svg>
+        <div>
+          <div class="eyebrow">Digital measurement · reporting · verification</div>
+          <h1>DrossVault dMRV Console</h1>
+        </div>
+      </div>
+      <div class="status-row" id="statusRow"></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Dashboard sections" id="tabs">
+      <button class="tab" role="tab" data-tab="overview">Overview</button>
+      <button class="tab" role="tab" data-tab="energy">Energy &amp; savings</button>
+      <button class="tab" role="tab" data-tab="ops">Operations &amp; alerts</button>
+      <button class="tab" role="tab" data-tab="quality">Data quality</button>
+      <button class="tab" role="tab" data-tab="credits">Carbon credits</button>
+      <button class="tab" role="tab" data-tab="rollout">Rollout &amp; risks</button>
+    </nav>
+    <p class="side-foot">100 TPD dross line · 1–30 Sep 2026 (synthetic dataset)<br>CBG dMRV model · Dross Vault Guwahati pilot</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- OVERVIEW -->
+<section class="view" data-view="overview" role="tabpanel">
+  <div class="view-head">
+    <div>
+      <h2>Plant snapshot</h2>
+      <p class="sub" id="snapSub"></p>
+    </div>
+  </div>
+  <div class="tiles" id="latestTiles"></div>
+  <div class="tiles" id="periodTiles"></div>
+  <div class="grid g2">
+    <div class="card span2">
+      <div class="card-head">
+        <h3>Specific electricity consumption, baseline vs optimized</h3>
+        <span class="sub">kWh per tonne processed, daily, 1–30 Sep 2026</span>
+      </div>
+      <div class="legend" id="secLegend"></div>
+      <div class="chart" id="secChart"></div>
+      <details>
+        <summary>Daily data table</summary>
+        <div class="tbl-wrap scroll-y"><table id="dailyTable"></table></div>
+      </details>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Daily throughput</h3><span class="sub">tonnes/day vs 100 TPD design</span></div>
+      <div class="chart" id="tputChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Recovery rate</h3><span class="sub">% of processed input recovered</span></div>
+      <div class="legend" id="recLegend"></div>
+      <div class="chart" id="recChart"></div>
+    </div>
+  </div>
+  <div class="callout" id="scopeNote"></div>
+</section>
+
+<!-- ENERGY -->
+<section class="view" data-view="energy" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Where the energy goes, and how it comes down</h2>
+      <p class="sub">Equipment shares are the workbook's baseline profile. The savings bridge and business case use the simulated optimization scenario, which is a potential, not a measured result.</p>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Energy hotspots</h3><span class="sub">share of baseline kWh/t</span></div>
+      <div class="bars" id="equipBars"></div>
+      <p class="note">Priority rule from the workbook: share ≥ 25% is High (investigate runtime and load), ≥ 18% is Medium (review setpoints), otherwise Low (monitor).</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>SEC savings bridge</h3><span class="sub">kWh/t, baseline to optimized</span></div>
+      <div class="chart" id="bridgeChart"></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Optimization interventions</h3><span class="sub">all six are at pilot status</span></div>
+      <div class="tbl-wrap"><table id="intTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Daily energy saved under the scenario</h3><span class="sub">kWh/day</span></div>
+      <div class="chart" id="savedChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Business case</h3><span class="sub">edit the inputs; outputs recalculate</span></div>
+      <div class="form" id="bcForm"></div>
+      <div class="out" id="bcOut"></div>
+      <p class="note">Tariff, CAPEX, software, support and grid factor are workbook placeholders. Replace them with project values and the CEA-approved grid factor before commercial use.</p>
+    </div>
+  </div>
+</section>
+
+<!-- OPERATIONS -->
+<section class="view" data-view="ops" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Operations and alerts</h2>
+      <p class="sub">720 hourly records. Alerts follow the operating-state-aware logic: no equipment fault is raised while the plant is idle, and only unexpected standby energy can alert.</p>
+    </div>
+  </div>
+  <div class="tiles" id="alertTiles"></div>
+  <div class="card">
+    <div class="card-head">
+      <h3>Hourly heatmap</h3>
+      <div class="controls">
+        <div class="seg" id="hmMetric" role="group" aria-label="Heatmap metric"></div>
+      </div>
+    </div>
+    <div class="legend" id="hmLegend"></div>
+    <div class="chart" id="heatmap"></div>
+    <p class="sub">Select a day column to inspect its sensor traces below.</p>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <h3 id="dayTitle">Sensor traces</h3>
+      <div class="controls"><label class="sub" for="daySel">Day</label><select id="daySel"></select></div>
+    </div>
+    <div class="legend"><span><i class="sw box" style="background:var(--accent-wash);border:1px solid var(--s1)"></i>Normal band (Anomaly_Config)</span><span><i class="sw box" style="background:var(--idle)"></i>Idle hours</span></div>
+    <div class="grid g2" id="traces"></div>
+    <div class="callout" id="envNote"></div>
+  </div>
+  <div class="grid g2">
+    <div class="card span2">
+      <div class="card-head">
+        <h3>Alert log</h3>
+        <div class="seg" id="alertFilter" role="group" aria-label="Filter alerts"></div>
+      </div>
+      <div class="tbl-wrap scroll-y"><table id="alertTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Anomaly scoring configuration</h3><span class="sub">0–100 weighted deviation</span></div>
+      <div class="tbl-wrap"><table id="cfgTable"></table></div>
+      <div class="legend" id="bandLegend"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hours by operating state</h3><span class="sub">30 days</span></div>
+      <div class="bars" id="stateBars"></div>
+      <div class="card-head"><h3>Diagnosis notes</h3><span class="sub">hours</span></div>
+      <div class="bars" id="diagBars"></div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA QUALITY -->
+<section class="view" data-view="quality" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Data quality and verification trail</h2>
+      <p class="sub">Seven sensor and KPI channels, one record per hour each. A reading counts toward reporting only when it is valid and verified.</p>
+    </div>
+  </div>
+  <div class="tiles" id="dqTiles"></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Completeness by channel</h3><span class="sub">records out of 720</span></div>
+      <div class="legend"><span><i class="sw box" style="background:var(--s1)"></i>Valid, verified</span><span><i class="sw box" style="background:var(--s4)"></i>Missing, under review</span></div>
+      <div class="bars" id="dqBars"></div>
+      <div class="callout" id="dqNote"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Sensor register</h3><span class="sub">calibration and source</span></div>
+      <div class="tbl-wrap"><table id="sensorTable"></table></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Validation rules from the submission</h3><span class="sub">how each rule applies to this dataset</span></div>
+      <div class="tbl-wrap"><table id="vRules"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Resolution rules</h3><span class="sub">doubt resolves toward fewer credits</span></div>
+      <div class="tbl-wrap"><table id="rRules"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Ledger rules</h3><span class="sub">SHA-256 hash chain, Merkle root per period</span></div>
+      <div class="tbl-wrap"><table id="lRules"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- CREDITS -->
+<section class="view" data-view="credits" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Carbon credits for a CBG plant</h2>
+      <p class="sub">From the hackathon submission: a 5 TPD compressed biogas plant running 330 days. Every input is an assumption to be replaced with measured data and the approved CCTS methodology. One Carbon Credit Certificate equals one tonne of CO₂e.</p>
+    </div>
+  </div>
+  <div class="formula">ER = <span class="t-pos">BE<sub>CH₄</sub> + BE<sub>fossil</sub></span> − <span class="t-neg">PE</span> − <span class="t-neg">LE</span> &nbsp;·&nbsp; PE = E<sub>grid</sub>×EF<sub>grid</sub> + V<sub>diesel</sub>×EF<sub>diesel</sub> + (M<sub>slip</sub>+M<sub>leak</sub>+M<sub>flare</sub>)×GWP<sub>CH₄</sub> + PE<sub>digestate</sub></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Credit calculator</h3><span class="sub">worked-example defaults</span></div>
+      <div class="form" id="erForm"></div>
+      <div class="chart" id="erChart"></div>
+      <p class="note">Methane-avoidance credits (BE<sub>CH₄</sub>) come on top and depend on feedstock type and its baseline fate, so they are excluded here. Credits round down to whole tonnes (rule C7).</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Revenue and payback</h3><span class="sub">CCC prices are not yet established</span></div>
+      <div class="controls"><div class="seg" id="modelSeg" role="group" aria-label="Revenue model"></div></div>
+      <div class="form" id="revForm"></div>
+      <div class="out" id="revOut"></div>
+      <div class="chart" id="sensChart"></div>
+      <p class="note" id="modelNote"></p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Installation kit per plant</h3><span class="sub">estimate, INR</span></div>
+      <div class="bars" id="kitBars"></div>
+      <p class="sub">Total <b class="num">₹12,49,000</b>, less where the plant already has gas analyzers or flow meters.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Market size</h3><span class="sub">CBG plants, at ₹12.5 lakh hardware + ₹5 lakh/yr</span></div>
+      <div class="tbl-wrap"><table id="mktTable"></table></div>
+      <div class="bars" id="mktBars"></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Credit lifecycle</h3><span class="sub">every arrow is a registry event on the hash chain (G8)</span></div>
+      <div class="flow" id="lifecycle"></div>
+      <div class="tbl-wrap"><table id="creditRecord"></table></div>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Who sees what</h3><span class="sub">three screens, three users</span></div>
+      <div class="grid g3" id="personas"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ROLLOUT -->
+<section class="view" data-view="rollout" role="tabpanel" hidden>
+  <div class="view-head">
+    <div>
+      <h2>Rollout and risks</h2>
+      <p class="sub">Pilot at the Dross Vault Guwahati plant, then developers with several plants, then bundled into new SATAT builds.</p>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-head"><h3>Scale-up pathway</h3></div>
+      <ol class="steps" id="pathway"></ol>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Feedstock to verified credit</h3><span class="sub">each step leaves a ledger record</span></div>
+      <ol class="steps" id="pipeline"></ol>
+    </div>
+    <div class="card span2">
+      <div class="card-head"><h3>Risk register</h3></div>
+      <div class="tbl-wrap"><table id="riskTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Manual MRV vs dMRV</h3></div>
+      <div class="tbl-wrap"><table id="cmpTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Open questions</h3></div>
+      <ul class="plain" id="openQs"></ul>
+      <div class="card-head"><h3>Workbook assumptions</h3></div>
+      <div class="tbl-wrap"><table id="assumpTable"></table></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Sources: <span class="mono">data/DrossVault_Digital_MRV_Executive_Dashboard.xlsx</span> (synthetic 30-day demonstration dataset) and <span class="mono">data/Dross_Vault_dMRV_Hackathon_Submission.pdf</span> (4 Oct 2026).</p>
+  <p>The grid emission factor (0.716 kg CO₂e/kWh) is a placeholder. Confirm the approved factor before external reporting.</p>
+</footer>
+</main>
+<div id="tip" hidden></div>
+
+<script>
+window.DV_DATA = {"assumptions":[{"param":"Plant design capacity","value":"100 tonnes/day","note":"Design throughput"},{"param":"Operating schedule","value":"20 hours/day","note":"4 hours/day assumed for cleaning, changeover and downtime"},{"param":"Nominal throughput","value":"5 tonnes/hour","note":"100 TPD / 20 operating hours"},{"param":"Baseline specific electricity consumption","value":"32 kWh/tonne","note":"Synthetic benchmark assumption for prototype"},{"param":"Grid emission factor","value":"0.716 kg CO2e/kWh","note":"Placeholder; replace with project-approved Indian grid factor"},{"param":"Baseline recovery rate","value":"82%","note":"Recoverable material output / processed input"},{"param":"Baseline reject rate","value":"18%","note":"Residual/reject fraction"},{"param":"Target optimized SEC","value":"26 kWh/tonne","note":"Scenario assumption after digital monitoring + operational optimization"},{"param":"Target optimized recovery rate","value":"84%","note":"Scenario assumption; throughput preserved"},{"param":"Plant availability target","value":"95%","note":"Operational target"},{"param":"Data frequency","value":"Hourly","note":"Representative of edge/SCADA data aggregation"},{"param":"Dataset duration","value":"30 days","note":"Synthetic demonstration dataset"},{"param":"Electricity tariff","value":"₹8/kWh","note":"Editable placeholder for business-case calculation"},{"param":"System CAPEX","value":"₹1,500,000","note":"Editable placeholder for payback"},{"param":"Annual software / analytics cost","value":"₹180,000","note":"Editable placeholder"},{"param":"Annual maintenance / support","value":"₹120,000","note":"Editable placeholder"}],"equipment":[{"name":"Shredder / primary processing","share":35.0,"sec":11.2},{"name":"Conveyors","share":18.0,"sec":5.76},{"name":"Sorting / separation","share":20.0,"sec":6.4},{"name":"Baling / densification","share":10.0,"sec":3.2},{"name":"Pumps / auxiliaries","share":7.0,"sec":2.24},{"name":"Fans / dust control","share":5.0,"sec":1.6},{"name":"Lighting / control / other","share":5.0,"sec":1.6}],"daily":[{"date":"2026-09-01","t":101.987,"kwh":3251.1,"rec_t":83.614,"rej_t":18.372,"down":289.2,"run":1150.8,"co2":2327.8,"sec":31.88,"rec":81.98,"co2t":22.82,"avail":95.9,"sec_opt":25.57,"kwh_opt":2607.8,"saved":643.3,"co2_avoided":460.6,"rec_opt":83.3},{"date":"2026-09-02","t":97.734,"kwh":3155.9,"rec_t":80.629,"rej_t":17.104,"down":283.3,"run":1156.7,"co2":2259.6,"sec":32.29,"rec":82.5,"co2t":23.12,"avail":96.39,"sec_opt":25.5,"kwh_opt":2492.5,"saved":663.3,"co2_avoided":475.0,"rec_opt":84.08},{"date":"2026-09-03","t":93.925,"kwh":3007.6,"rec_t":77.337,"rej_t":16.588,"down":264.6,"run":1175.4,"co2":2153.5,"sec":32.02,"rec":82.34,"co2t":22.93,"avail":97.95,"sec_opt":26.69,"kwh_opt":2506.4,"saved":501.2,"co2_avoided":358.9,"rec_opt":83.45},{"date":"2026-09-04","t":97.897,"kwh":3147.5,"rec_t":80.44,"rej_t":17.456,"down":321.9,"run":1118.1,"co2":2253.6,"sec":32.15,"rec":82.17,"co2t":23.02,"avail":93.17,"sec_opt":25.04,"kwh_opt":2451.3,"saved":696.2,"co2_avoided":498.5,"rec_opt":83.26},{"date":"2026-09-05","t":99.045,"kwh":3192.7,"rec_t":81.43,"rej_t":17.615,"down":277.9,"run":1162.1,"co2":2285.9,"sec":32.23,"rec":82.22,"co2t":23.08,"avail":96.84,"sec_opt":27.13,"kwh_opt":2686.7,"saved":506.0,"co2_avoided":362.3,"rec_opt":83.63},{"date":"2026-09-06","t":94.818,"kwh":3076.7,"rec_t":77.32,"rej_t":17.497,"down":295.4,"run":1144.6,"co2":2202.9,"sec":32.45,"rec":81.55,"co2t":23.23,"avail":95.38,"sec_opt":26.58,"kwh_opt":2520.2,"saved":556.5,"co2_avoided":398.4,"rec_opt":84.6},{"date":"2026-09-07","t":97.492,"kwh":3173.9,"rec_t":80.255,"rej_t":17.235,"down":286.0,"run":1154.0,"co2":2272.5,"sec":32.56,"rec":82.32,"co2t":23.31,"avail":96.17,"sec_opt":26.76,"kwh_opt":2609.2,"saved":564.6,"co2_avoided":404.3,"rec_opt":84.48},{"date":"2026-09-08","t":102.596,"kwh":3306.8,"rec_t":84.248,"rej_t":18.345,"down":276.2,"run":1163.8,"co2":2367.7,"sec":32.23,"rec":82.12,"co2t":23.08,"avail":96.98,"sec_opt":25.68,"kwh_opt":2634.2,"saved":672.6,"co2_avoided":481.6,"rec_opt":84.12},{"date":"2026-09-09","t":106.912,"kwh":3412.8,"rec_t":87.491,"rej_t":19.42,"down":279.6,"run":1160.4,"co2":2443.6,"sec":31.92,"rec":81.83,"co2t":22.86,"avail":96.7,"sec_opt":25.9,"kwh_opt":2768.5,"saved":644.4,"co2_avoided":461.4,"rec_opt":83.23},{"date":"2026-09-10","t":94.708,"kwh":3098.1,"rec_t":77.628,"rej_t":17.077,"down":294.2,"run":1145.8,"co2":2218.2,"sec":32.71,"rec":81.97,"co2t":23.42,"avail":95.48,"sec_opt":25.0,"kwh_opt":2367.4,"saved":730.7,"co2_avoided":523.2,"rec_opt":83.9},{"date":"2026-09-11","t":102.834,"kwh":3274.8,"rec_t":84.871,"rej_t":17.962,"down":275.6,"run":1164.4,"co2":2344.8,"sec":31.85,"rec":82.53,"co2t":22.8,"avail":97.03,"sec_opt":25.63,"kwh_opt":2635.9,"saved":638.9,"co2_avoided":457.4,"rec_opt":84.15},{"date":"2026-09-12","t":98.997,"kwh":3177.6,"rec_t":81.511,"rej_t":17.486,"down":281.5,"run":1158.5,"co2":2275.1,"sec":32.1,"rec":82.34,"co2t":22.98,"avail":96.54,"sec_opt":26.35,"kwh_opt":2608.1,"saved":569.4,"co2_avoided":407.7,"rec_opt":84.09},{"date":"2026-09-13","t":102.055,"kwh":3272.9,"rec_t":83.796,"rej_t":18.26,"down":304.5,"run":1135.5,"co2":2343.4,"sec":32.07,"rec":82.11,"co2t":22.96,"avail":94.62,"sec_opt":26.91,"kwh_opt":2746.0,"saved":526.9,"co2_avoided":377.2,"rec_opt":83.08},{"date":"2026-09-14","t":99.526,"kwh":3202.2,"rec_t":81.834,"rej_t":17.693,"down":294.8,"run":1145.2,"co2":2292.8,"sec":32.18,"rec":82.22,"co2t":23.04,"avail":95.43,"sec_opt":25.22,"kwh_opt":2510.5,"saved":691.7,"co2_avoided":495.3,"rec_opt":83.55},{"date":"2026-09-15","t":92.499,"kwh":3009.5,"rec_t":75.897,"rej_t":16.602,"down":286.1,"run":1153.9,"co2":2154.8,"sec":32.54,"rec":82.05,"co2t":23.29,"avail":96.16,"sec_opt":25.74,"kwh_opt":2381.3,"saved":628.2,"co2_avoided":449.8,"rec_opt":83.97},{"date":"2026-09-16","t":98.112,"kwh":3177.8,"rec_t":80.23,"rej_t":17.883,"down":293.6,"run":1146.4,"co2":2275.3,"sec":32.39,"rec":81.77,"co2t":23.19,"avail":95.53,"sec_opt":25.89,"kwh_opt":2540.5,"saved":637.3,"co2_avoided":456.3,"rec_opt":84.27},{"date":"2026-09-17","t":100.002,"kwh":3241.2,"rec_t":81.887,"rej_t":18.113,"down":300.8,"run":1139.2,"co2":2320.7,"sec":32.41,"rec":81.89,"co2t":23.21,"avail":94.93,"sec_opt":25.02,"kwh_opt":2502.3,"saved":738.8,"co2_avoided":529.0,"rec_opt":83.0},{"date":"2026-09-18","t":100.606,"kwh":3228.8,"rec_t":82.724,"rej_t":17.884,"down":290.3,"run":1149.7,"co2":2311.8,"sec":32.09,"rec":82.23,"co2t":22.98,"avail":95.81,"sec_opt":26.41,"kwh_opt":2657.4,"saved":571.4,"co2_avoided":409.1,"rec_opt":83.92},{"date":"2026-09-19","t":98.465,"kwh":3166.4,"rec_t":80.787,"rej_t":17.679,"down":292.6,"run":1147.4,"co2":2267.1,"sec":32.16,"rec":82.05,"co2t":23.02,"avail":95.62,"sec_opt":25.49,"kwh_opt":2510.2,"saved":656.2,"co2_avoided":469.8,"rec_opt":84.07},{"date":"2026-09-20","t":95.921,"kwh":3126.4,"rec_t":78.838,"rej_t":17.086,"down":297.0,"run":1143.0,"co2":2238.5,"sec":32.59,"rec":82.19,"co2t":23.34,"avail":95.25,"sec_opt":25.86,"kwh_opt":2480.8,"saved":645.6,"co2_avoided":462.2,"rec_opt":84.42},{"date":"2026-09-21","t":101.31,"kwh":3284.5,"rec_t":82.849,"rej_t":18.465,"down":291.5,"run":1148.5,"co2":2351.7,"sec":32.42,"rec":81.78,"co2t":23.21,"avail":95.71,"sec_opt":25.68,"kwh_opt":2602.0,"saved":682.5,"co2_avoided":488.7,"rec_opt":84.35},{"date":"2026-09-22","t":93.858,"kwh":3066.6,"rec_t":76.822,"rej_t":17.038,"down":282.5,"run":1157.5,"co2":2195.6,"sec":32.67,"rec":81.85,"co2t":23.39,"avail":96.46,"sec_opt":25.45,"kwh_opt":2388.4,"saved":678.1,"co2_avoided":485.5,"rec_opt":84.29},{"date":"2026-09-23","t":107.33,"kwh":3439.7,"rec_t":87.378,"rej_t":19.954,"down":276.2,"run":1163.8,"co2":2462.8,"sec":32.05,"rec":81.41,"co2t":22.95,"avail":96.98,"sec_opt":26.0,"kwh_opt":2790.1,"saved":649.6,"co2_avoided":465.1,"rec_opt":83.6},{"date":"2026-09-24","t":99.238,"kwh":3203.2,"rec_t":80.975,"rej_t":18.264,"down":307.3,"run":1132.7,"co2":2293.5,"sec":32.28,"rec":81.6,"co2t":23.11,"avail":94.39,"sec_opt":25.85,"kwh_opt":2565.2,"saved":638.0,"co2_avoided":456.8,"rec_opt":83.05},{"date":"2026-09-25","t":100.808,"kwh":3267.0,"rec_t":82.377,"rej_t":18.434,"down":302.8,"run":1137.2,"co2":2339.2,"sec":32.41,"rec":81.72,"co2t":23.2,"avail":94.77,"sec_opt":25.74,"kwh_opt":2594.8,"saved":672.2,"co2_avoided":481.3,"rec_opt":83.8},{"date":"2026-09-26","t":101.704,"kwh":3306.7,"rec_t":83.372,"rej_t":18.33,"down":267.5,"run":1172.5,"co2":2367.6,"sec":32.51,"rec":81.98,"co2t":23.28,"avail":97.71,"sec_opt":25.49,"kwh_opt":2592.4,"saved":714.2,"co2_avoided":511.4,"rec_opt":84.5},{"date":"2026-09-27","t":95.631,"kwh":3090.4,"rec_t":78.303,"rej_t":17.33,"down":280.7,"run":1159.3,"co2":2212.7,"sec":32.32,"rec":81.88,"co2t":23.14,"avail":96.61,"sec_opt":26.22,"kwh_opt":2507.8,"saved":582.6,"co2_avoided":417.1,"rec_opt":84.7},{"date":"2026-09-28","t":98.495,"kwh":3154.5,"rec_t":80.397,"rej_t":18.098,"down":285.5,"run":1154.5,"co2":2258.6,"sec":32.03,"rec":81.63,"co2t":22.93,"avail":96.21,"sec_opt":27.16,"kwh_opt":2674.9,"saved":479.7,"co2_avoided":343.4,"rec_opt":84.36},{"date":"2026-09-29","t":97.219,"kwh":3136.1,"rec_t":79.999,"rej_t":17.222,"down":295.9,"run":1144.1,"co2":2245.4,"sec":32.26,"rec":82.29,"co2t":23.1,"avail":95.34,"sec_opt":26.1,"kwh_opt":2537.2,"saved":598.8,"co2_avoided":428.8,"rec_opt":84.21},{"date":"2026-09-30","t":99.367,"kwh":3194.4,"rec_t":81.329,"rej_t":18.04,"down":299.3,"run":1140.7,"co2":2287.2,"sec":32.15,"rec":81.85,"co2t":23.02,"avail":95.06,"sec_opt":26.7,"kwh_opt":2652.8,"saved":541.6,"co2_avoided":387.8,"rec_opt":84.19}],"kpis":{"Dataset throughput":{"value":2971.091,"unit":"tonnes / 30 days"},"Average daily throughput":{"value":99.03636666666668,"unit":"tonnes/day"},"Baseline electricity":{"value":95843.66999999998,"unit":"kWh / 30 days"},"Baseline SEC":{"value":32.25874602965711,"unit":"kWh/tonne"},"Baseline emissions":{"value":68623.89000000001,"unit":"kg CO2e / 30 days"},"Optimized SEC":{"value":25.95788136266798,"unit":"kWh/tonne"},"Energy saving":{"value":18720.44230430941,"unit":"kWh / 30 days"},"Energy reduction":{"value":19.53226781101915,"unit":"%"},"CO2e avoided":{"value":13403.65896988558,"unit":"kg CO2e / 30 days"},"Throughput preserved":{"value":100,"unit":"Yes / design capacity basis"},"Optimization claim basis":{"value":"Simulated intervention scenario","unit":null},"MRV status":{"value":"Measurement + Reporting + Verification layer added","unit":null},"Anomaly logic":{"value":"Operating-state aware; equipment fault and energy anomalies separated","unit":null}},"hourly":{"t":[0.0,0.0,0.0,0.0,5.117,5.492,5.324,5.068,5.277,5.07,5.069,5.215,4.77,4.809,5.049,4.956,5.23,4.978,4.873,5.468,5.119,5.179,4.871,5.053,0.0,0.0,0.0,0.0,4.693,4.994,4.721,5.205,4.748,4.838,5.061,4.66,4.946,5.157,4.586,4.937,4.952,5.054,4.659,4.642,5.003,4.959,4.95,4.969,0.0,0.0,0.0,0.0,4.898,4.575,4.74,4.135,4.556,4.703,4.514,5.061,4.479,4.667,4.776,5.025,4.478,4.972,4.753,4.564,4.839,4.789,4.637,4.764,0.0,0.0,0.0,0.0,5.093,4.794,4.731,5.003,4.648,5.266,5.138,4.815,4.571,5.173,4.884,5.15,4.594,4.789,4.908,4.916,4.819,5.029,4.697,4.879,0.0,0.0,0.0,0.0,4.855,5.072,5.204,4.715,5.162,4.918,5.168,4.898,4.688,4.723,5.062,5.105,4.87,5.181,4.716,5.039,4.808,4.921,5.062,4.878,0.0,0.0,0.0,0.0,4.696,4.691,4.231,4.733,4.699,4.875,5.094,4.957,4.692,4.533,5.231,4.754,4.746,4.739,4.781,4.716,4.634,4.639,4.737,4.64,0.0,0.0,0.0,0.0,5.049,4.981,4.554,4.718,4.812,4.845,4.98,4.894,4.6,4.934,4.978,4.968,5.07,5.022,4.949,4.846,4.537,4.943,4.9,4.912,0.0,0.0,0.0,0.0,5.142,4.987,5.073,5.326,5.106,5.077,4.791,5.218,5.198,5.506,5.005,5.112,5.118,5.387,5.048,5.124,5.19,5.105,4.977,5.106,0.0,0.0,0.0,0.0,5.114,5.277,4.976,5.417,5.47,5.229,5.667,5.07,5.019,5.38,5.555,5.691,5.234,5.562,5.323,5.295,5.52,5.471,4.995,5.647,0.0,0.0,0.0,0.0,4.897,4.65,4.241,5.143,4.45,4.401,4.904,5.171,4.972,4.818,4.824,4.872,4.855,4.765,4.731,4.7,4.569,4.659,4.393,4.693,0.0,0.0,0.0,0.0,5.233,4.903,4.687,5.209,5.641,5.128,5.301,5.146,5.109,5.318,5.069,5.184,5.195,4.992,5.333,5.093,4.974,5.239,4.945,5.135,0.0,0.0,0.0,0.0,4.804,5.114,4.942,4.984,5.233,5.031,5.037,5.143,4.859,4.766,4.725,4.543,5.337,4.714,4.887,4.877,4.992,5.092,5.101,4.816,0.0,0.0,0.0,0.0,5.426,5.403,4.974,4.944,5.161,4.864,5.128,5.222,5.315,5.046,5.025,4.888,4.899,5.021,5.141,5.252,4.904,5.369,5.011,5.062,0.0,0.0,0.0,0.0,4.755,4.853,5.119,5.061,4.906,4.88,4.875,4.77,5.273,4.889,5.194,5.254,5.151,4.867,5.033,4.948,4.774,5.017,4.719,5.188,0.0,0.0,0.0,0.0,4.509,4.589,4.501,4.849,4.653,5.002,4.637,4.517,4.367,3.9,4.354,4.698,4.743,4.355,4.815,4.559,4.676,4.948,4.815,4.599,0.0,0.0,0.0,0.0,5.281,4.697,4.383,4.821,5.091,5.258,4.637,4.973,4.786,4.856,5.392,4.583,4.926,4.968,5.088,4.896,4.937,4.8,4.929,4.81,0.0,0.0,0.0,0.0,4.843,4.885,4.956,4.747,4.853,4.922,5.193,5.07,5.056,5.188,4.99,5.096,4.997,5.071,4.9,4.528,4.99,5.303,5.203,5.211,0.0,0.0,0.0,0.0,5.438,5.032,4.992,4.959,4.994,5.307,4.586,5.339,4.744,4.977,4.944,5.149,4.709,5.124,5.438,4.756,5.069,4.898,5.116,5.035,0.0,0.0,0.0,0.0,4.829,4.969,5.037,4.802,5.214,4.909,4.962,4.994,4.947,5.028,4.745,4.756,4.651,4.95,5.016,4.954,5.191,4.864,4.995,4.652,0.0,0.0,0.0,0.0,4.779,4.963,4.72,4.495,5.14,5.07,4.556,4.937,4.707,4.855,4.861,4.759,4.653,4.671,4.628,4.644,4.791,4.667,4.935,5.09,0.0,0.0,0.0,0.0,5.075,4.844,4.941,4.823,5.154,5.196,4.976,5.031,4.732,4.963,5.013,5.55,4.8,5.318,5.224,5.08,5.377,5.098,5.102,5.013,0.0,0.0,0.0,0.0,4.583,4.565,4.651,4.853,4.789,4.349,4.704,4.834,4.661,4.79,4.959,4.778,4.636,4.782,4.617,4.594,4.525,4.877,4.44,4.871,0.0,0.0,0.0,0.0,4.909,5.26,5.499,5.309,5.02,5.308,5.681,5.584,5.306,5.521,5.241,4.956,5.122,5.651,5.261,5.267,5.255,5.724,5.665,5.791,0.0,0.0,0.0,0.0,4.911,4.625,5.187,5.102,5.04,5.249,4.76,5.294,5.132,4.901,5.173,4.729,4.785,4.828,4.843,4.739,5.19,4.897,5.018,4.835,0.0,0.0,0.0,0.0,5.162,5.098,5.0,5.293,5.079,4.653,4.825,5.013,5.113,5.039,5.297,4.656,5.08,4.683,5.204,5.032,5.135,4.876,5.309,5.261,0.0,0.0,0.0,0.0,4.87,5.192,5.206,5.116,5.263,4.788,5.36,5.331,5.173,5.383,4.692,4.919,4.877,5.17,4.814,5.177,5.3,5.165,5.082,4.826,0.0,0.0,0.0,0.0,4.851,5.008,4.488,4.483,4.714,4.837,5.083,4.876,4.696,4.547,4.975,4.559,5.051,4.688,5.044,4.871,4.716,4.644,4.677,4.823,0.0,0.0,0.0,0.0,5.012,5.185,5.016,4.714,4.899,5.007,4.89,4.937,4.962,4.965,4.991,4.769,4.838,4.725,5.175,4.561,5.21,5.257,4.92,4.462,0.0,0.0,0.0,0.0,4.948,5.277,4.546,5.075,5.053,4.643,5.026,4.896,4.787,4.672,4.692,5.228,4.832,4.983,4.679,4.681,5.041,4.571,4.751,4.838,0.0,0.0,0.0,0.0,5.231,5.374,4.701,4.671,4.906,5.148,5.131,5.246,4.79,4.565,5.204,4.864,4.625,5.06,5.191,5.006,4.939,4.999,4.956,4.76],"kwh":[6.04,3.85,3.33,7.74,161.72,178.97,170.41,153.72,157.7,167.75,167.43,170.83,149.96,140.61,150.37,154.32,169.55,157.21,155.09,172.37,162.99,164.05,160.3,164.78,6.21,3.42,3.81,7.49,160.73,164.15,156.18,161.21,152.76,150.76,164.38,154.52,153.63,167.7,150.57,164.36,154.41,151.18,150.42,150.72,148.95,158.2,155.98,164.13,7.7,5.88,4.94,6.22,146.54,146.59,148.84,130.83,147.68,150.26,145.95,162.3,138.84,150.28,152.73,156.17,145.93,160.89,147.6,149.94,153.2,154.01,145.54,148.77,7.77,6.03,4.14,6.36,164.55,154.39,155.55,150.42,157.46,167.3,156.6,149.03,144.85,158.14,156.06,161.04,156.51,159.8,153.26,162.35,162.83,153.19,147.86,152.04,3.32,7.95,4.61,7.05,149.77,165.3,164.96,149.21,176.44,146.62,174.34,158.33,148.8,149.6,159.12,161.49,151.29,160.79,151.5,161.73,156.93,152.35,170.3,160.91,5.82,3.33,6.88,5.27,157.64,147.04,140.85,155.97,149.42,154.74,159.77,162.06,152.16,151.92,168.4,151.92,153.66,154.89,143.97,148.0,144.68,162.96,149.38,145.96,7.58,3.17,6.49,4.49,165.19,159.96,144.64,159.35,159.26,167.78,156.57,151.54,143.33,151.99,172.82,155.61,164.63,169.17,160.35,148.2,147.64,155.7,155.18,163.24,4.5,6.54,3.34,5.91,160.91,169.96,156.4,174.44,154.47,164.17,155.77,173.89,161.81,170.27,157.65,165.6,171.84,158.95,171.36,168.76,170.57,164.12,155.76,159.84,6.67,3.66,6.58,7.55,159.48,172.4,153.17,171.61,170.42,164.55,181.62,161.62,160.11,176.74,169.43,178.4,168.8,182.74,162.54,170.31,180.66,171.63,159.96,172.2,4.42,4.54,7.02,5.7,151.68,144.9,130.33,171.83,144.2,151.0,155.65,177.12,158.19,166.45,150.64,165.04,152.33,145.03,158.6,151.01,148.33,156.43,148.13,149.5,6.2,7.11,3.66,7.31,171.39,151.45,153.66,160.6,185.75,160.21,168.63,149.73,153.0,165.89,165.23,165.12,175.37,156.09,166.65,169.97,155.54,159.09,161.32,155.84,7.31,7.23,7.59,4.26,156.93,155.98,165.07,173.81,174.09,156.19,154.45,164.18,151.19,151.12,144.1,147.63,175.64,151.68,157.23,146.42,154.14,157.27,160.15,153.9,3.17,3.31,7.53,3.7,177.42,162.22,151.82,154.4,164.98,151.65,168.76,166.47,164.34,163.12,160.29,154.49,153.48,160.97,169.87,179.12,159.66,177.55,158.38,156.18,6.43,3.35,3.87,7.28,157.46,152.13,167.01,172.34,145.55,157.56,160.36,157.59,167.7,151.05,165.96,170.18,160.62,161.27,161.36,157.55,150.18,160.29,144.05,161.11,5.28,4.85,3.61,5.09,146.08,142.56,146.61,149.53,140.29,167.03,158.53,152.86,145.41,144.82,140.1,148.35,160.99,137.27,154.69,145.87,148.88,149.96,166.48,144.35,4.38,7.39,7.72,3.74,174.59,147.84,147.08,158.24,161.53,168.53,145.51,163.95,150.42,159.62,170.23,146.34,161.44,153.93,166.09,149.94,159.31,156.89,157.81,155.3,7.83,6.81,7.75,6.51,153.79,156.69,152.08,154.38,155.34,159.78,174.91,158.98,158.76,179.16,162.71,165.21,156.75,162.95,165.15,145.38,156.34,162.18,160.01,171.71,6.79,3.81,5.38,6.59,166.77,160.92,157.2,157.46,156.27,174.66,141.85,173.73,161.03,164.38,151.58,165.41,155.09,163.09,165.99,155.37,159.39,164.7,158.67,152.67,6.93,6.67,4.92,3.13,153.16,159.14,158.16,157.94,158.3,147.79,164.96,153.7,161.19,158.52,152.35,157.59,146.53,159.69,158.97,163.09,160.23,158.15,159.61,155.66,6.36,3.41,7.76,7.19,154.0,163.77,157.46,148.87,160.6,166.79,147.01,162.59,154.47,151.39,158.55,154.74,150.84,152.95,151.61,148.17,150.22,152.55,149.52,165.58,4.67,6.96,5.26,3.92,161.8,160.0,155.64,151.58,171.66,169.04,167.29,163.16,149.75,168.22,162.58,169.0,158.98,165.24,169.59,164.88,174.46,157.17,161.44,162.22,4.14,5.98,7.64,7.65,151.02,144.82,155.05,164.74,152.12,143.2,152.67,163.56,151.16,149.69,158.65,149.65,148.12,150.27,144.95,145.39,149.04,170.89,143.27,152.88,4.15,5.76,4.86,6.31,151.44,164.26,171.1,165.72,158.88,165.08,173.64,162.86,165.83,175.7,189.54,158.5,167.74,175.16,178.16,163.48,168.76,185.99,188.04,188.73,5.66,4.44,5.46,4.5,162.36,150.14,155.91,176.46,155.88,166.24,155.97,165.66,160.51,160.12,154.32,152.33,154.08,153.92,159.28,158.68,175.36,154.89,152.15,158.92,7.73,5.0,6.92,4.33,170.74,165.34,153.36,174.49,160.27,150.31,162.87,162.99,159.86,160.51,166.31,156.83,158.41,150.32,170.29,166.3,162.02,161.21,165.23,165.32,7.25,3.22,6.67,4.71,153.99,166.58,165.97,167.66,171.01,154.65,168.88,180.85,163.73,178.96,146.62,165.81,164.06,158.76,156.41,171.12,161.7,167.09,163.45,157.5,4.89,3.31,4.7,5.53,150.47,156.31,145.72,136.64,147.93,161.19,163.16,167.0,149.1,149.01,170.49,144.42,158.51,141.8,167.37,168.45,153.29,153.21,148.52,139.35,5.08,3.12,4.68,3.89,155.24,162.24,159.44,151.99,159.77,150.57,163.71,167.03,148.92,152.21,159.47,147.67,149.4,165.08,164.39,153.23,167.32,168.48,153.29,138.32,7.67,4.52,6.91,6.83,156.96,156.44,150.6,160.83,163.58,144.59,161.93,159.4,142.86,152.41,154.13,159.95,154.33,160.48,152.04,157.01,163.01,142.91,159.86,156.81,4.1,3.0,7.58,7.22,168.48,171.73,157.82,160.96,152.89,171.64,159.35,159.96,148.42,142.9,167.31,157.22,142.91,150.77,160.58,159.5,157.99,162.65,164.39,155.03],"sec":[null,null,null,null,31.6,32.59,32.01,30.33,29.88,33.09,33.03,32.76,31.44,29.24,29.78,31.14,32.42,31.58,31.82,31.52,31.84,31.67,32.91,32.61,null,null,null,null,34.25,32.87,33.08,30.97,32.18,31.16,32.48,33.16,31.06,32.52,32.83,33.29,31.18,29.91,32.29,32.47,29.77,31.9,31.51,33.03,null,null,null,null,29.92,32.04,31.4,31.64,32.41,31.95,32.33,32.07,31.0,32.2,31.98,31.08,32.59,32.36,31.06,32.85,31.66,32.16,31.39,31.23,null,null,null,null,32.31,32.21,32.88,30.06,33.88,31.77,30.48,30.95,31.69,30.57,31.95,31.27,34.07,33.37,31.23,33.02,33.79,30.46,31.48,31.16,null,null,null,null,30.85,32.59,31.7,31.65,34.18,29.81,33.74,32.32,31.74,31.67,31.43,31.64,31.07,31.03,32.12,32.1,32.64,30.96,33.64,32.98,null,null,null,null,33.56,31.34,33.29,32.96,31.8,31.74,31.36,32.69,32.43,33.51,32.19,31.95,32.38,32.69,30.12,31.38,31.22,35.13,31.54,31.46,null,null,null,null,32.72,32.12,31.76,33.77,33.1,34.63,31.44,30.96,31.16,30.81,34.71,31.32,32.47,33.69,32.4,30.58,32.54,31.5,31.67,33.23,null,null,null,null,31.29,34.08,30.83,32.75,30.25,32.34,32.51,33.32,31.13,30.93,31.5,32.4,33.58,29.51,33.95,32.94,32.86,32.15,31.3,31.3,null,null,null,null,31.19,32.67,30.78,31.68,31.16,31.47,32.05,31.88,31.9,32.85,30.5,31.35,32.25,32.86,30.53,32.16,32.73,31.37,32.02,30.5,null,null,null,null,30.98,31.16,30.73,33.41,32.41,34.31,31.74,34.25,31.81,34.55,31.23,33.87,31.38,30.44,33.52,32.13,32.46,33.58,33.72,31.86,null,null,null,null,32.75,30.89,32.78,30.83,32.93,31.24,31.81,29.1,29.95,31.2,32.59,31.85,33.76,31.27,31.25,33.37,31.27,30.37,32.63,30.35,null,null,null,null,32.67,30.5,33.4,34.87,33.27,31.04,30.66,31.92,31.11,31.71,30.5,32.5,32.91,32.18,32.17,30.03,30.88,30.89,31.4,31.96,null,null,null,null,32.7,30.02,30.52,31.23,31.96,31.18,32.91,31.88,30.92,32.33,31.9,31.6,31.33,32.06,33.04,34.11,32.56,33.07,31.6,30.85,null,null,null,null,33.12,31.35,32.62,34.05,29.67,32.29,32.89,33.04,31.8,30.9,31.95,32.39,31.18,33.13,32.06,31.84,31.46,31.95,30.52,31.05,null,null,null,null,32.4,31.06,32.58,30.84,30.15,33.39,34.18,33.84,33.3,39.2,32.18,31.57,33.94,31.52,32.13,32.0,31.84,30.31,34.57,31.39,null,null,null,null,33.06,31.47,33.56,32.82,31.73,32.05,31.38,32.97,31.43,32.87,31.57,31.93,32.77,30.99,32.64,30.63,32.27,32.68,32.02,32.29,null,null,null,null,31.75,32.07,30.69,32.52,32.01,32.46,33.68,31.36,31.4,34.53,32.61,32.42,31.37,32.14,33.7,32.11,31.33,30.58,30.75,32.95,null,null,null,null,30.67,31.98,31.49,31.75,31.29,32.91,30.93,32.54,33.94,33.03,30.66,32.12,32.93,31.83,30.52,32.66,31.45,33.63,31.01,30.32,null,null,null,null,31.72,32.03,31.4,32.89,30.36,30.1,33.25,30.78,32.59,31.53,32.11,33.14,31.51,32.26,31.69,32.92,30.87,32.52,31.96,33.46,null,null,null,null,32.23,33.0,33.36,33.12,31.24,32.9,32.27,32.94,32.81,31.19,32.62,32.51,32.41,32.74,32.76,31.9,31.35,32.69,30.3,32.53,null,null,null,null,31.88,33.03,31.5,31.43,33.3,32.53,33.62,32.43,31.64,33.89,32.43,30.45,33.12,31.07,32.47,32.46,32.45,30.83,31.65,32.36,null,null,null,null,32.96,31.72,33.34,33.95,31.77,32.93,32.45,33.84,32.43,31.25,31.99,31.32,31.95,31.42,31.4,31.65,32.93,35.04,32.27,31.38,null,null,null,null,30.85,31.23,31.12,31.22,31.65,31.1,30.56,29.16,31.25,31.82,36.16,31.98,32.75,30.99,33.87,31.04,32.11,32.49,33.19,32.59,null,null,null,null,33.06,32.46,30.06,34.59,30.93,31.67,32.77,31.29,31.27,32.67,29.83,32.21,32.2,31.88,32.89,33.48,33.79,31.63,30.32,32.87,null,null,null,null,33.07,32.43,30.67,32.97,31.56,32.3,33.76,32.51,31.26,31.85,31.4,33.68,31.19,32.1,32.72,33.05,31.55,33.06,31.12,31.42,null,null,null,null,31.62,32.09,31.88,32.78,32.5,32.3,31.51,33.92,31.65,33.25,31.25,33.71,33.64,30.71,32.49,33.05,30.51,32.35,32.16,32.63,null,null,null,null,31.02,31.22,32.47,30.48,31.38,33.32,32.1,34.25,31.75,32.77,34.27,31.68,31.38,30.25,33.18,34.58,32.5,32.99,31.75,28.89,null,null,null,null,30.98,31.29,31.79,32.24,32.62,30.07,33.48,33.83,30.01,30.66,31.95,30.96,30.88,34.94,31.76,33.59,32.11,32.05,31.15,31.0,null,null,null,null,31.72,29.65,33.13,31.69,32.37,31.14,32.22,32.56,29.84,32.62,32.85,30.6,31.94,32.21,32.5,33.54,32.34,31.27,33.65,32.41,null,null,null,null,32.21,31.96,33.57,34.46,31.17,33.34,31.06,30.49,30.99,31.3,32.15,32.32,30.9,29.8,30.94,31.86,31.99,32.54,33.17,32.57],"rec":[null,null,null,null,81.28,80.53,82.89,81.14,82.39,83.12,81.42,83.63,82.43,82.99,81.74,81.4,82.12,80.24,80.3,82.48,79.7,82.36,82.95,84.63,null,null,null,null,82.57,83.39,84.28,81.91,83.74,80.71,81.91,82.26,82.18,83.3,82.62,83.14,81.72,82.82,80.71,82.05,82.22,82.61,81.22,84.55,null,null,null,null,81.82,81.41,83.08,81.33,83.53,83.32,82.82,82.71,83.39,80.92,81.01,82.29,80.26,83.77,81.98,83.84,82.27,82.6,83.05,81.28,null,null,null,null,81.1,84.47,83.64,80.58,82.09,82.46,82.8,81.92,81.05,84.36,81.73,81.67,81.7,81.85,80.29,81.99,82.65,83.11,81.42,82.32,null,null,null,null,82.64,81.76,83.4,81.48,83.05,80.79,82.39,82.93,82.76,80.98,82.57,80.83,83.04,80.51,82.34,82.87,84.26,81.85,81.81,82.09,null,null,null,null,79.51,80.67,80.65,81.71,83.39,82.39,83.26,80.46,81.88,82.14,79.95,82.02,80.83,82.31,80.46,82.22,80.38,82.59,82.15,81.96,null,null,null,null,82.03,81.45,83.51,82.24,82.1,81.56,81.5,81.08,83.18,82.46,81.23,83.43,81.34,84.16,82.79,81.12,81.98,83.25,82.71,83.4,null,null,null,null,82.45,80.26,82.85,82.78,81.17,80.5,82.55,82.24,84.16,83.01,79.09,80.84,83.05,81.7,82.77,82.07,82.76,84.49,81.42,81.97,null,null,null,null,81.97,78.58,80.45,82.57,80.13,81.58,83.24,81.96,82.09,78.52,82.74,82.26,84.88,83.42,82.36,82.51,83.43,83.65,80.68,79.42,null,null,null,null,83.13,82.13,82.53,82.15,82.05,80.51,83.5,80.57,81.84,81.33,83.97,81.55,80.53,82.4,80.55,82.67,80.3,83.31,82.17,82.16,null,null,null,null,83.67,81.63,81.92,81.83,81.74,81.64,82.52,83.12,82.65,82.47,82.14,80.88,80.35,83.25,84.59,83.87,84.42,80.83,83.42,83.8,null,null,null,null,82.88,82.48,82.03,82.68,82.81,81.3,82.53,81.06,81.48,82.27,83.52,83.85,82.71,81.8,83.77,81.9,84.22,81.55,80.66,81.44,null,null,null,null,82.88,81.37,82.56,81.03,82.51,82.1,79.16,81.13,81.42,81.7,81.78,83.38,84.25,83.02,81.6,80.72,80.73,85.11,82.41,83.37,null,null,null,null,80.38,82.62,83.33,81.84,83.02,82.85,82.74,82.44,81.64,83.14,83.39,82.23,79.8,83.93,80.08,82.15,82.23,81.48,82.91,82.38,null,null,null,null,81.73,83.69,83.14,82.13,81.34,80.96,80.57,81.7,82.95,83.35,81.63,81.75,80.52,82.51,81.48,83.92,83.41,80.65,82.77,81.25,null,null,null,null,81.94,81.29,82.27,82.67,83.36,81.98,82.49,83.14,82.52,82.42,81.11,79.73,83.13,83.0,80.51,78.38,81.41,83.27,79.88,81.01,null,null,null,null,82.74,82.72,81.39,82.36,82.8,80.92,80.92,81.8,81.73,82.94,80.58,82.02,82.12,82.06,80.08,83.99,81.55,82.3,81.03,81.91,null,null,null,null,82.57,80.5,82.32,81.57,83.59,81.18,82.88,82.13,82.13,81.85,82.44,82.52,83.43,82.42,80.7,79.93,82.55,84.09,82.63,83.26,null,null,null,null,83.07,81.21,79.42,81.53,83.45,82.49,81.24,83.48,83.34,82.31,82.04,83.24,81.9,82.08,84.01,80.62,83.22,80.41,80.16,81.6,null,null,null,null,82.89,81.08,84.84,81.72,84.06,81.54,81.17,81.67,83.16,85.54,82.66,82.1,85.58,82.5,80.89,83.17,80.49,80.35,79.74,78.84,null,null,null,null,83.48,79.3,79.75,81.78,82.78,82.8,82.85,80.97,82.36,83.29,84.17,81.06,80.91,83.03,80.59,80.36,81.16,79.64,82.81,82.38,null,null,null,null,83.06,80.73,83.61,82.68,82.41,82.05,80.62,81.44,81.09,83.07,82.55,81.79,81.71,80.56,80.44,81.5,79.86,82.42,81.0,84.09,null,null,null,null,81.29,83.0,81.14,82.58,80.99,82.55,80.88,79.46,81.37,79.44,79.5,81.49,81.5,82.43,81.79,82.89,81.86,81.45,81.28,81.44,null,null,null,null,82.13,82.32,80.85,83.82,82.09,79.71,80.4,81.89,83.25,83.44,81.53,79.01,82.54,82.73,79.54,80.35,80.97,82.38,82.39,80.48,null,null,null,null,81.12,79.76,82.47,83.99,81.83,81.51,82.05,81.68,82.52,80.92,80.75,82.38,80.61,81.5,80.8,82.62,81.06,84.2,80.16,82.52,null,null,null,null,79.57,83.21,85.44,82.53,82.36,80.94,82.06,80.95,80.95,83.4,82.04,81.6,79.01,84.01,80.87,82.64,82.54,81.94,80.92,82.0,null,null,null,null,80.62,84.34,81.91,80.77,84.6,81.32,80.11,80.34,82.59,78.96,81.19,81.82,81.27,83.28,82.56,83.07,82.17,80.63,81.43,84.46,null,null,null,null,80.08,82.61,81.57,81.4,81.36,82.52,79.34,81.3,80.74,84.52,81.81,83.65,81.96,79.79,80.44,83.15,83.08,80.48,80.72,82.09,null,null,null,null,83.43,82.06,80.15,82.89,81.85,81.96,82.94,81.01,82.19,82.37,81.83,82.98,83.43,83.48,83.53,83.27,83.12,81.0,82.51,79.44,null,null,null,null,82.2,83.71,81.46,82.33,82.99,82.8,81.09,79.51,80.59,82.22,81.71,80.81,82.19,82.79,82.12,81.52,82.22,83.42,80.29,80.84],"moist":[null,null,null,null,29.6,27.8,26.7,30.8,33.4,34.4,33.3,27.2,33.4,38.3,32.4,29.9,29.9,30.7,32.0,28.8,33.0,41.9,36.6,26.4,null,null,null,null,29.1,28.1,33.7,28.4,35.3,34.5,34.9,30.2,33.5,33.4,28.2,34.3,35.0,41.3,36.4,29.1,34.5,28.8,30.7,27.0,null,null,null,null,40.5,29.5,33.4,34.5,31.9,31.2,37.2,31.5,28.0,34.5,35.9,29.7,30.1,31.1,31.9,28.7,34.8,28.9,40.6,28.8,null,null,null,null,37.1,36.7,35.9,36.2,34.9,25.2,31.6,29.9,34.0,29.8,32.9,29.9,37.5,44.3,32.8,38.7,28.6,28.5,34.3,32.2,null,null,null,null,35.3,28.8,32.3,30.4,33.2,30.4,32.1,23.2,33.4,33.0,32.3,30.0,35.0,39.5,34.6,32.5,28.8,30.0,25.2,25.4,null,null,null,null,36.4,26.4,37.1,27.1,33.8,34.4,31.3,25.8,38.8,31.8,31.8,32.7,28.9,36.1,36.1,34.1,26.4,28.2,34.8,36.6,null,null,null,null,31.8,29.9,32.9,30.2,33.1,37.6,38.3,28.3,38.2,34.7,33.2,29.8,28.7,25.9,33.1,28.8,29.9,29.9,34.3,34.0,null,null,null,null,25.9,29.8,30.0,26.9,27.7,31.0,36.5,34.6,37.8,32.5,24.4,35.1,27.4,32.8,30.9,37.6,33.6,37.3,32.8,34.1,null,null,null,null,29.8,30.5,30.6,33.4,36.0,35.4,33.5,31.2,34.9,33.4,36.4,39.7,32.6,36.2,38.5,33.3,31.0,34.8,31.3,28.6,null,null,null,null,25.7,34.2,33.3,32.9,34.2,26.4,35.6,28.7,33.7,35.9,42.3,34.3,27.9,32.9,33.5,29.2,28.3,29.1,30.7,32.8,null,null,null,null,31.9,26.8,32.2,24.1,38.1,30.7,32.6,26.1,27.3,21.6,31.9,31.4,31.3,31.2,34.7,33.2,33.8,32.7,27.8,29.0,null,null,null,null,38.4,32.7,34.3,33.0,33.5,31.2,33.6,31.5,33.7,38.9,25.0,29.7,36.8,28.7,35.8,29.1,34.5,31.1,38.2,33.3,null,null,null,null,22.3,34.1,33.2,36.7,27.9,30.5,33.7,40.2,29.4,38.5,35.5,29.0,35.7,37.1,29.4,33.7,31.7,35.9,32.8,37.3,null,null,null,null,30.1,28.0,34.0,34.7,31.5,33.3,31.0,29.9,30.6,27.8,31.3,35.9,34.7,31.5,35.0,40.7,38.8,29.6,31.7,30.8,null,null,null,null,31.5,33.8,34.8,33.4,31.5,27.9,29.4,29.3,31.5,38.4,27.6,37.6,35.9,33.1,34.2,30.5,34.8,33.8,38.9,29.8,null,null,null,null,31.9,28.4,44.6,34.1,31.4,34.6,35.8,29.5,34.1,36.8,28.5,28.8,28.7,28.9,24.0,37.4,37.0,33.9,30.0,29.9,null,null,null,null,29.5,30.2,29.8,37.8,36.2,35.3,27.2,34.4,35.0,31.2,32.1,34.9,30.6,26.1,31.1,25.4,27.0,34.2,38.3,33.9,null,null,null,null,26.8,30.7,30.2,40.4,31.3,24.5,35.6,30.4,25.7,31.2,32.0,21.6,27.7,30.0,32.1,34.7,28.1,29.6,28.8,34.6,null,null,null,null,25.9,32.2,34.0,28.5,34.7,32.6,25.9,25.2,32.6,26.7,33.4,28.3,26.0,28.0,29.8,35.3,27.5,33.4,31.1,31.8,null,null,null,null,33.9,35.5,31.2,33.2,34.8,29.8,24.3,27.0,33.4,27.7,26.7,31.5,28.6,35.7,27.5,30.3,32.2,41.7,40.4,28.5,null,null,null,null,28.8,32.2,36.8,27.2,35.6,32.0,33.8,37.6,30.2,33.2,27.9,29.4,32.1,36.1,32.7,28.2,34.2,29.8,32.4,34.9,null,null,null,null,23.6,39.8,32.0,36.9,29.9,33.7,30.8,39.0,30.2,34.5,35.3,31.2,30.9,35.5,30.6,34.4,28.6,32.7,24.9,31.5,null,null,null,null,32.9,29.8,36.9,32.8,33.6,36.9,31.9,31.3,21.0,33.5,34.0,33.1,25.9,37.0,34.7,37.2,32.4,35.9,35.5,30.4,null,null,null,null,39.9,34.2,33.2,27.5,31.2,33.3,39.6,36.3,26.4,30.2,36.6,30.0,28.1,28.1,32.9,33.7,28.9,27.2,29.9,32.9,null,null,null,null,38.6,34.3,30.8,29.0,34.0,37.3,25.1,27.9,31.6,29.2,20.4,32.4,30.2,32.6,26.7,30.0,27.6,35.6,41.1,24.5,null,null,null,null,31.8,26.9,35.8,31.3,24.6,33.5,37.7,34.7,34.6,28.3,34.2,25.8,30.8,27.2,36.5,36.4,32.0,30.6,41.3,36.4,null,null,null,null,33.8,26.6,33.6,39.2,34.0,36.1,35.4,31.7,41.1,31.6,31.1,28.7,26.8,33.7,33.8,31.6,26.8,38.4,30.4,29.8,null,null,null,null,34.7,34.0,31.8,32.2,31.8,38.8,33.7,28.1,40.3,31.6,28.8,35.5,37.9,33.4,32.5,23.2,36.3,33.3,29.4,39.7,null,null,null,null,28.1,33.4,28.7,29.5,30.6,31.3,33.0,34.2,32.0,29.1,34.9,35.5,32.3,30.4,41.9,35.4,29.7,37.8,29.9,26.7,null,null,null,null,34.1,23.3,33.3,32.4,32.0,28.1,30.0,24.7,30.7,33.3,30.4,31.3,25.6,32.1,33.7,30.5,33.1,27.3,29.9,37.0],"temp":[38.4,38.9,39.3,39.7,40.4,40.9,41.0,41.0,41.4,41.4,40.3,39.9,39.8,40.2,39.6,38.3,38.5,38.4,38.6,39.0,39.3,39.7,39.4,39.3,38.6,39.1,39.5,39.0,40.3,40.8,41.2,41.2,40.6,40.6,40.7,39.8,40.1,40.1,38.4,39.0,39.0,39.7,39.1,38.6,38.7,38.6,39.1,39.4,38.8,38.4,38.9,39.2,41.7,40.7,41.3,40.6,40.4,40.4,40.7,40.4,39.7,39.2,39.3,38.8,38.4,38.9,38.1,37.9,38.9,38.7,40.0,39.5,38.1,38.6,39.1,39.4,41.7,41.7,40.9,41.3,40.9,40.8,40.8,39.4,39.5,39.3,39.3,39.1,39.4,39.4,38.4,39.2,38.6,39.0,39.7,39.2,38.4,38.8,39.2,39.6,40.7,40.6,41.1,40.7,41.3,40.8,40.2,39.7,39.7,39.5,39.5,39.2,38.7,39.4,38.7,38.9,38.8,38.3,38.8,39.1,38.5,39.0,39.5,39.0,40.9,40.5,41.3,40.9,41.2,40.5,40.3,39.9,40.5,39.5,39.0,38.6,38.3,39.0,39.1,39.0,38.0,38.3,39.3,39.8,38.8,39.2,38.8,39.2,40.9,40.9,41.1,40.2,40.6,41.0,41.1,40.1,40.5,39.4,39.1,38.7,38.7,38.7,39.1,38.1,38.1,38.7,39.5,40.0,38.1,38.6,39.0,39.4,41.0,41.1,40.5,40.8,40.7,40.7,41.0,40.9,40.2,39.7,39.0,39.5,39.0,38.6,38.3,39.2,39.1,39.8,39.6,39.4,38.3,38.8,39.2,39.6,41.1,40.7,40.7,41.4,41.7,41.5,40.6,39.9,40.0,40.0,40.2,40.5,38.6,39.3,39.4,39.1,39.3,40.0,38.9,39.6,38.5,39.0,39.4,38.9,40.3,40.9,40.9,41.4,41.1,39.8,40.5,40.0,40.1,40.0,40.5,38.8,38.3,38.6,38.8,38.6,37.9,38.3,38.7,39.4,38.7,39.2,38.8,39.1,41.0,40.8,41.1,41.3,41.6,40.5,40.7,40.2,40.0,39.1,39.0,38.9,38.9,38.8,39.5,38.5,38.7,39.2,39.1,39.7,38.9,38.5,39.0,39.3,41.5,41.4,40.8,40.8,41.1,40.7,40.8,40.5,39.6,39.9,38.8,38.6,39.7,38.7,38.6,38.2,39.0,39.1,40.2,39.1,38.2,38.7,39.1,39.5,41.3,41.1,40.9,41.4,40.9,40.7,41.1,40.8,39.7,40.2,39.7,39.0,38.7,38.9,38.4,39.0,38.9,40.0,39.0,39.9,38.5,38.9,39.4,39.7,40.2,40.5,41.3,41.4,41.1,40.3,40.0,39.7,39.9,39.4,39.6,39.2,39.0,38.5,39.0,39.8,39.7,38.5,38.9,39.5,38.6,39.1,38.7,39.1,40.4,40.9,41.2,41.4,40.2,40.3,39.9,39.7,39.7,57.0,38.4,39.2,39.0,38.6,39.0,37.8,38.6,39.0,39.8,39.3,38.9,38.5,38.9,39.3,41.1,40.8,42.4,40.8,40.7,41.1,40.7,40.2,39.5,39.7,39.2,38.6,38.7,38.8,38.1,38.9,39.2,39.1,39.2,39.6,38.2,38.7,39.1,39.5,40.9,40.3,40.5,41.3,41.2,41.2,40.7,40.1,40.0,39.5,39.3,39.6,39.0,38.2,38.3,38.2,38.7,39.7,39.6,39.6,38.4,38.9,39.3,39.7,40.6,40.7,40.8,41.9,41.0,41.1,40.2,40.0,39.5,39.6,39.5,38.5,38.1,38.4,39.0,39.0,39.0,38.4,38.9,39.7,38.6,39.1,39.5,39.0,40.4,41.0,41.4,41.0,40.9,40.4,40.1,40.0,40.1,39.7,38.8,38.4,38.3,38.5,38.7,39.4,38.4,38.9,39.1,39.4,38.8,38.4,38.9,39.2,41.0,41.5,41.1,40.4,41.0,40.5,40.0,40.1,40.2,38.9,38.8,38.8,38.5,39.1,37.8,38.0,38.6,39.8,40.2,39.7,38.1,38.6,39.1,39.4,41.0,41.3,41.2,40.5,41.3,41.0,40.9,40.3,39.2,39.5,39.1,39.3,39.0,38.9,38.6,38.5,39.4,39.1,39.7,39.5,38.4,38.8,39.2,39.6,40.0,41.2,40.7,41.4,40.7,40.9,39.8,40.5,39.4,39.7,39.8,39.2,38.1,38.7,38.2,38.8,38.6,38.6,38.4,39.3,38.5,39.0,39.5,39.0,40.7,40.9,41.9,41.5,41.4,41.1,40.7,40.4,40.0,40.3,39.2,38.8,38.6,39.6,39.3,39.7,38.6,39.6,40.0,40.0,38.8,39.2,38.8,39.2,41.6,41.1,41.6,40.5,40.6,40.9,41.1,41.0,40.1,38.9,39.6,38.6,38.5,38.6,39.0,38.4,38.6,38.7,39.2,39.8,38.1,38.6,39.0,39.4,41.8,41.6,40.6,40.8,41.1,41.1,40.4,40.3,39.6,39.2,39.2,38.9,39.0,38.1,38.3,38.4,38.7,39.5,40.7,39.1,38.3,38.8,39.2,39.6,41.2,40.6,41.4,41.0,41.0,41.0,40.8,40.4,40.1,39.6,39.4,39.1,38.2,38.4,38.9,39.3,39.2,39.3,39.9,39.7,38.5,39.0,39.4,38.9,40.7,40.7,40.9,41.6,41.2,40.6,40.6,40.0,40.6,39.4,39.5,38.2,38.5,38.6,39.0,38.8,38.0,39.1,38.8,39.2,38.7,39.2,38.8,39.1,41.1,41.4,41.3,41.2,40.5,41.2,40.5,40.0,40.9,39.1,38.8,39.1,39.3,38.8,39.1,37.8,39.2,39.2,39.1,40.2,38.9,38.5,39.0,39.3,40.8,41.6,40.1,40.6,40.7,40.4,40.7,40.6,39.3,38.9,39.3,39.6,39.0,38.9,39.1,38.6,38.6,39.4,39.2,38.8,38.2,38.7,39.1,39.5,41.6,40.7,40.8,40.8,40.9,40.8,40.7,39.8,39.4,39.4,39.3,39.1,37.9,38.5,38.8,38.6,39.1,39.1,38.6,39.7],"amb":[null,null,null,null,35.6,31.5,31.4,29.8,30.0,28.9,30.5,30.8,34.8,31.2,31.9,33.3,33.4,31.7,29.9,35.7,30.9,30.9,28.7,28.5,null,null,null,null,28.0,28.9,30.4,31.9,30.3,32.2,28.9,27.9,31.1,33.6,32.3,32.6,29.8,27.0,29.2,29.4,29.3,33.2,35.4,33.6,null,null,null,null,32.5,29.5,31.8,32.9,29.5,33.1,30.2,29.0,33.0,31.2,30.2,31.6,27.5,33.1,30.3,30.7,31.0,34.6,31.5,25.7,null,null,null,null,34.9,35.4,28.6,25.9,35.1,30.9,31.9,33.4,30.7,31.1,32.5,25.2,32.4,28.6,29.4,34.7,28.4,35.8,29.5,30.9,null,null,null,null,34.6,31.9,31.6,32.0,30.2,26.3,30.5,27.3,36.7,33.1,31.8,29.9,34.4,26.6,28.2,32.2,34.4,31.1,29.9,27.8,null,null,null,null,30.1,35.4,29.7,30.1,28.3,27.9,29.2,35.4,29.6,31.4,27.6,31.9,32.0,33.5,29.4,29.1,28.6,31.5,37.4,35.4,null,null,null,null,31.1,29.9,28.8,33.6,33.7,29.9,30.3,30.9,30.5,31.4,29.7,34.6,32.6,29.5,36.0,30.9,34.0,32.7,33.8,34.5,null,null,null,null,34.9,25.5,31.6,30.8,30.9,34.6,32.4,32.8,30.9,29.4,27.0,30.9,30.4,29.3,29.6,29.4,33.6,29.3,30.2,36.4,null,null,null,null,33.9,33.9,33.9,31.2,29.9,30.2,31.6,32.8,26.0,36.2,28.4,33.2,30.9,32.6,29.1,35.0,27.9,30.6,27.4,29.4,null,null,null,null,28.5,27.7,31.0,29.9,29.2,29.3,29.3,31.8,31.1,27.6,35.2,30.5,31.1,33.1,35.2,31.2,30.7,32.5,36.8,30.6,null,null,null,null,32.4,29.5,32.2,28.0,34.7,30.0,34.0,27.6,32.9,27.3,28.6,29.9,27.0,29.5,29.5,31.1,31.3,34.0,32.8,30.2,null,null,null,null,32.7,29.4,31.8,26.6,30.7,32.5,34.0,32.6,32.8,33.3,29.6,36.0,32.9,29.9,28.1,30.7,34.1,33.7,31.4,27.0,null,null,null,null,30.3,33.0,30.9,31.5,32.7,28.3,28.5,30.5,28.6,30.3,38.0,31.3,33.7,32.2,30.0,31.1,32.1,32.4,30.3,34.3,null,null,null,null,31.3,31.4,32.0,28.6,29.7,29.9,28.7,35.6,33.0,35.3,28.7,33.5,32.3,34.3,30.4,32.4,29.1,29.3,31.2,34.4,null,null,null,null,29.4,30.8,31.7,30.9,31.2,33.4,33.3,31.7,26.6,28.3,32.9,26.8,29.5,29.8,30.7,32.4,31.9,28.0,32.3,30.6,null,null,null,null,26.6,34.4,30.9,31.2,32.5,30.0,28.6,32.3,33.0,33.7,29.3,31.5,27.0,30.5,31.1,31.5,33.0,37.9,29.3,33.8,null,null,null,null,34.0,27.4,30.6,32.6,28.3,28.8,32.6,31.1,28.5,31.0,33.8,32.7,34.9,31.4,28.9,31.1,30.2,32.2,27.9,30.2,null,null,null,null,34.7,32.5,29.9,29.4,34.5,33.0,31.0,32.5,28.8,34.8,33.2,32.0,26.6,29.8,32.7,29.3,33.0,33.4,32.0,28.5,null,null,null,null,32.4,32.7,33.7,33.6,31.7,28.4,34.8,30.6,34.6,28.6,29.1,26.4,27.4,29.2,34.4,33.0,31.7,33.6,32.3,32.4,null,null,null,null,32.2,31.1,29.0,34.6,36.0,30.9,29.8,30.3,30.2,34.1,32.4,25.5,31.9,32.5,32.4,33.3,30.5,29.6,35.7,31.0,null,null,null,null,29.9,29.5,32.5,29.5,28.2,29.2,33.0,34.5,32.2,31.5,30.5,30.1,34.8,28.3,28.8,33.1,32.5,31.9,30.2,32.2,null,null,null,null,29.5,34.7,29.1,28.8,34.9,32.4,32.0,30.6,28.2,29.4,29.7,27.1,30.8,28.4,29.9,28.7,30.1,28.5,33.3,30.2,null,null,null,null,28.9,28.2,30.4,28.2,28.8,25.8,29.3,29.5,34.5,32.9,35.3,29.6,28.2,29.2,32.7,30.5,31.5,28.8,30.4,32.6,null,null,null,null,34.2,34.2,30.7,32.5,31.6,28.8,32.2,34.3,27.2,29.8,31.5,29.4,30.1,31.4,33.9,29.2,29.6,30.2,35.4,35.3,null,null,null,null,31.9,28.1,31.6,29.8,32.8,30.8,32.1,33.1,32.2,33.1,26.9,29.5,26.6,28.6,29.1,33.4,34.3,30.0,26.3,31.5,null,null,null,null,28.3,27.9,26.8,29.2,32.6,29.2,28.7,30.1,33.2,31.3,25.6,30.5,34.2,28.6,31.5,31.9,36.2,28.5,27.1,29.5,null,null,null,null,26.8,29.7,28.0,30.3,34.0,29.0,29.0,32.3,32.4,32.7,30.0,33.1,30.8,31.6,34.4,32.4,29.5,30.7,27.9,33.7,null,null,null,null,30.2,35.8,34.0,27.6,34.1,32.2,32.3,28.1,34.7,35.0,31.8,31.8,29.7,30.9,31.6,31.1,30.3,31.7,36.3,27.8,null,null,null,null,33.2,35.7,29.4,32.1,32.1,29.0,29.9,31.4,36.5,34.0,31.8,30.8,30.8,32.5,30.6,33.2,30.4,30.6,31.1,33.5,null,null,null,null,28.5,27.3,29.3,30.9,31.6,29.6,26.6,30.8,32.2,34.3,31.0,28.5,28.8,33.0,27.8,28.0,29.3,32.2,28.6,30.2],"curr":[11.8,12.1,12.3,12.5,90.0,92.1,91.5,90.8,92.9,92.5,91.0,90.8,90.1,92.2,91.5,89.2,90.7,90.0,90.2,92.5,92.1,94.5,91.4,90.2,12.2,12.4,12.6,11.6,88.3,90.0,90.2,91.4,90.0,90.4,91.9,88.5,91.3,92.5,87.5,90.9,91.4,94.4,91.0,88.9,91.1,89.6,90.0,90.1,12.4,11.4,11.6,11.8,93.3,88.3,90.5,86.9,88.2,88.9,90.3,91.2,88.1,89.5,90.8,90.1,87.8,90.7,88.9,87.5,90.8,89.1,92.3,89.4,11.5,11.7,11.9,12.2,93.3,92.0,90.3,92.0,90.0,91.5,91.7,88.5,89.0,90.7,90.5,91.0,91.2,93.5,90.2,92.6,89.3,90.5,90.7,89.7,11.8,12.0,12.2,12.4,90.6,90.0,91.6,88.8,92.2,90.3,91.0,89.2,89.6,89.9,91.5,91.1,90.7,94.0,90.2,91.3,89.5,89.0,89.9,89.3,12.1,12.3,12.5,11.5,90.5,88.4,88.9,89.1,90.5,90.5,90.7,89.8,91.8,88.8,91.1,89.4,88.6,91.0,91.4,90.6,87.7,88.0,90.3,90.7,12.4,12.6,11.6,11.8,90.9,90.1,89.3,88.1,89.8,91.8,92.9,89.8,91.5,90.8,90.7,89.8,90.5,90.5,91.4,88.8,87.6,89.7,91.2,91.4,11.4,11.6,11.8,12.1,91.0,90.5,89.8,91.3,90.4,90.9,91.6,93.3,93.2,93.1,90.0,92.5,91.0,92.2,90.2,93.1,92.2,93.4,91.4,91.4,11.7,11.9,12.2,12.4,91.1,91.1,89.9,93.2,94.6,93.4,93.8,90.4,91.7,93.1,95.2,97.2,91.5,94.6,94.5,92.7,93.2,94.5,90.0,92.9,12.0,12.2,12.4,11.4,89.1,89.6,87.6,92.0,89.4,86.6,91.2,90.7,91.3,91.6,94.1,90.4,89.1,89.9,90.2,89.0,87.3,88.0,87.2,89.6,12.3,12.5,11.5,11.7,91.7,89.7,89.6,91.6,95.5,90.6,92.4,90.9,91.0,90.9,90.6,91.2,91.5,90.7,93.8,91.0,90.9,92.0,89.9,91.0,12.6,11.6,11.8,12.0,92.2,91.9,90.6,90.6,92.2,90.6,91.7,91.7,90.1,91.7,88.6,88.0,94.4,89.2,91.0,89.2,91.5,91.1,93.8,89.7,11.6,11.8,12.1,12.3,92.6,92.8,90.7,92.0,90.9,89.9,92.5,94.2,91.3,93.2,92.3,89.9,90.9,92.2,90.5,92.6,90.4,94.4,90.5,92.6,11.9,12.2,12.4,12.6,88.4,89.1,92.0,92.2,90.5,90.0,89.4,88.7,91.6,89.8,91.9,92.8,92.1,89.8,92.1,93.9,92.6,89.6,89.0,91.2,12.2,12.4,11.4,11.6,88.0,89.4,89.6,91.0,88.3,89.7,88.2,87.8,87.9,94.0,86.4,91.0,90.8,88.2,91.0,87.5,89.7,90.9,92.3,88.4,12.5,11.5,11.7,11.9,92.2,88.9,92.7,90.1,90.7,92.8,90.5,90.3,89.8,91.3,91.7,88.1,89.9,90.4,89.9,91.8,92.1,90.6,90.0,89.7,11.6,11.8,12.0,12.2,89.7,88.9,89.4,91.4,91.5,91.8,91.5,91.4,91.7,91.2,90.8,92.6,90.8,89.9,89.7,87.7,90.2,93.4,93.3,92.0,11.8,12.1,12.3,12.5,91.6,90.1,90.0,93.6,90.8,92.1,89.5,91.5,88.8,90.5,90.9,90.1,88.2,90.4,92.9,90.8,90.9,89.0,90.3,91.7,12.2,12.4,12.6,11.6,89.0,90.6,91.8,89.5,92.1,90.1,89.7,90.0,91.0,90.7,89.4,88.5,88.2,89.9,90.5,92.2,90.5,90.3,90.4,89.2,12.4,11.4,11.6,11.8,90.4,92.0,89.6,88.2,92.1,90.3,88.0,90.1,90.4,88.9,89.1,89.4,88.6,90.9,87.6,88.0,89.6,92.6,93.6,91.0,11.5,11.7,11.9,12.2,90.7,90.6,91.6,88.9,92.7,91.9,91.7,92.2,88.4,90.8,90.1,92.9,90.3,93.1,91.7,90.3,93.4,90.8,91.9,91.3,11.8,12.0,12.2,12.4,87.4,91.0,88.9,91.8,89.3,88.7,88.3,92.1,88.4,90.7,92.0,90.0,88.1,90.7,88.4,89.8,88.2,89.8,86.9,89.8,12.1,12.3,12.5,11.5,90.3,91.2,95.0,92.8,92.0,93.4,93.7,93.3,91.7,94.2,92.0,90.5,90.4,95.6,93.2,94.3,91.5,95.2,95.0,94.1,12.4,12.6,11.6,11.8,93.0,89.9,92.5,89.9,90.2,92.2,92.3,93.9,91.2,89.1,92.8,88.6,89.1,89.5,90.9,89.6,90.7,89.5,90.3,90.7,11.4,11.6,11.8,12.1,94.1,92.5,89.8,91.1,91.7,91.0,89.5,90.7,90.7,90.0,91.4,89.4,90.9,88.8,90.6,90.0,90.7,91.7,95.9,90.7,11.7,11.9,12.2,12.4,90.6,90.5,92.8,91.0,91.5,90.7,93.8,92.9,92.3,91.9,90.3,90.1,89.2,90.5,91.3,93.2,92.5,91.6,93.9,91.2,12.0,12.2,12.4,11.4,90.2,89.9,88.9,91.0,90.6,90.8,92.0,89.9,92.6,88.8,90.9,87.4,90.0,89.8,91.8,90.4,88.0,90.9,88.4,89.2,12.3,12.5,11.5,11.7,91.6,92.4,91.1,90.0,89.7,92.9,90.8,89.9,93.9,89.8,89.6,90.7,92.1,90.2,92.2,87.4,92.9,92.3,89.8,91.2,12.6,11.6,11.8,12.0,90.0,93.0,87.2,90.0,90.3,88.8,91.5,91.5,89.2,88.1,90.2,93.2,90.4,90.7,92.2,90.1,90.2,90.9,89.3,88.6,11.6,11.8,12.1,12.3,93.1,91.3,89.4,89.2,90.4,91.1,91.2,90.7,89.0,89.1,91.3,90.3,87.6,90.6,92.1,90.3,91.1,90.5,89.3,91.0],"vib":[0.25,0.25,0.26,0.26,3.8,4.0,3.92,3.83,4.09,4.03,3.95,3.86,3.81,4.1,3.91,3.71,3.86,3.77,3.79,4.0,3.98,4.47,4.03,3.78,0.25,0.26,0.26,0.24,3.58,3.75,3.81,3.87,3.89,3.9,4.04,3.58,3.91,4.03,3.52,3.94,3.99,4.39,3.92,3.57,3.98,3.72,3.76,3.74,0.26,0.24,0.24,0.25,4.26,3.53,3.81,3.52,3.61,3.66,3.88,3.87,3.49,3.81,3.94,3.76,3.48,3.8,3.71,3.51,3.92,3.64,4.13,3.64,0.24,0.24,0.25,0.25,4.19,4.01,3.91,4.08,3.83,3.89,3.92,3.64,3.73,3.84,3.85,3.84,3.95,4.39,3.85,4.17,3.66,3.77,3.83,3.79,0.25,0.25,0.25,0.26,3.94,3.78,3.98,3.62,4.01,3.74,3.94,3.69,3.77,3.77,3.91,3.82,3.94,4.35,3.85,3.91,3.66,3.7,3.78,3.68,0.25,0.26,0.26,0.24,3.93,3.59,3.73,3.62,3.81,3.91,3.86,3.73,4.06,3.61,3.96,3.76,3.61,3.94,3.97,3.83,3.55,3.55,3.87,3.92,0.26,0.26,0.24,0.25,3.87,3.74,3.68,3.6,3.81,4.07,4.18,3.7,3.99,3.96,3.9,3.73,3.79,3.77,3.9,3.66,3.5,3.72,3.93,3.93,0.24,0.24,0.25,0.25,3.83,3.75,3.78,3.92,3.8,3.85,3.99,4.12,4.26,4.15,3.75,4.09,3.82,4.09,3.82,4.22,4.04,4.2,3.9,4.01,0.24,0.25,0.25,0.26,3.82,3.91,3.76,4.15,4.32,4.17,4.28,3.84,4.02,4.13,4.39,4.64,4.0,4.37,4.37,4.09,4.09,4.27,3.81,4.09,0.25,0.25,0.26,0.24,3.69,3.79,3.53,3.99,3.69,3.42,3.99,3.84,3.94,3.98,4.33,3.9,3.67,3.78,3.8,3.6,3.51,3.56,3.46,3.74,0.26,0.26,0.24,0.24,3.97,3.7,3.71,3.87,4.51,3.85,4.05,3.83,3.82,3.91,3.88,3.92,3.92,3.82,4.19,3.96,3.93,4.02,3.72,3.83,0.26,0.24,0.25,0.25,4.1,3.96,3.94,3.89,4.06,3.83,3.97,3.92,3.86,4.1,3.6,3.51,4.3,3.61,3.99,3.68,3.99,3.86,4.25,3.82,0.24,0.25,0.25,0.26,3.99,4.17,3.9,4.08,3.84,3.71,4.03,4.4,3.91,4.23,4.06,3.7,3.99,4.13,3.82,4.08,3.8,4.27,3.9,4.17,0.25,0.25,0.26,0.26,3.62,3.67,4.03,4.04,3.79,3.85,3.73,3.63,3.93,3.7,3.93,4.19,4.08,3.76,4.04,4.3,4.11,3.75,3.69,3.89,0.25,0.26,0.24,0.24,3.57,3.74,3.75,3.86,3.64,3.75,3.56,3.5,3.5,4.8,3.4,3.99,3.93,3.58,3.89,3.53,3.83,3.92,4.13,3.54,0.26,0.24,0.24,0.25,4.0,3.6,4.22,3.87,3.87,4.13,3.87,3.74,3.84,4.03,3.95,3.53,3.72,3.74,3.79,4.08,4.09,3.86,3.72,3.66,0.24,0.25,0.25,0.25,3.68,3.69,3.72,4.03,4.01,4.0,3.86,4.01,4.04,3.91,3.86,4.07,3.79,3.78,3.75,3.5,3.75,4.14,4.29,4.06,0.25,0.25,0.26,0.26,3.97,3.8,3.75,4.29,3.82,3.92,3.82,3.95,3.61,3.81,3.84,3.82,3.59,3.81,4.1,3.88,3.8,3.69,3.81,4.01,0.25,0.26,0.26,0.24,3.66,3.85,3.99,3.65,4.1,3.83,3.73,3.75,3.87,3.78,3.79,3.62,3.56,3.73,3.77,4.02,3.84,3.86,3.81,3.67,0.26,0.24,0.24,0.25,3.84,4.03,3.68,3.64,4.07,3.79,3.52,3.72,3.79,3.66,3.67,3.7,3.57,3.89,3.54,3.57,3.75,4.2,4.28,3.81,0.24,0.24,0.25,0.25,3.8,3.8,4.07,3.65,4.13,3.96,3.95,4.16,3.61,3.9,3.76,4.05,3.77,4.23,4.01,3.79,4.18,3.81,3.94,4.01,0.25,0.25,0.25,0.26,3.52,4.04,3.67,4.04,3.64,3.61,3.63,4.14,3.58,3.88,4.02,3.71,3.6,3.92,3.58,3.78,3.51,3.82,3.45,3.76,0.25,0.26,0.26,0.24,3.85,3.89,4.39,4.07,3.97,4.27,4.21,4.13,3.92,4.22,4.08,3.89,3.81,4.47,4.15,4.29,4.0,4.44,4.39,4.19,0.26,0.26,0.24,0.25,4.23,3.78,4.03,3.79,3.83,4.06,4.14,4.25,3.83,3.7,4.19,3.61,3.64,3.67,3.83,3.8,3.85,3.7,3.76,3.83,0.24,0.24,0.25,0.25,4.3,4.04,3.78,3.9,4.0,3.96,3.67,3.77,3.89,3.77,3.91,3.7,3.81,3.71,3.85,3.76,3.82,3.99,4.52,3.88,0.24,0.25,0.25,0.26,3.79,3.84,4.16,3.88,3.89,3.83,4.34,4.17,4.08,3.95,3.82,3.72,3.72,3.83,4.0,4.19,4.02,3.88,4.39,4.0,0.25,0.25,0.26,0.24,3.87,3.75,3.67,3.98,3.82,3.98,4.08,3.77,4.19,3.6,3.81,3.51,3.77,3.78,3.98,3.78,3.59,4.0,3.6,3.66,0.26,0.26,0.24,0.24,4.01,4.06,3.86,3.73,3.78,4.22,3.89,3.72,4.29,3.81,3.74,3.92,4.09,3.79,3.99,3.51,4.19,4.06,3.71,3.99,0.26,0.24,0.25,0.25,3.73,4.09,3.5,3.78,3.81,3.63,3.93,3.93,3.73,3.57,3.85,4.17,3.79,3.77,4.21,3.87,3.77,3.95,3.63,3.65,0.24,0.25,0.25,0.26,4.1,3.94,3.76,3.7,3.81,3.84,3.83,3.87,3.67,3.7,3.88,3.76,3.54,3.89,4.05,3.78,3.89,3.76,3.72,3.99],"state":[0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3],"eq":[0,0,0,0,2,3,2,2,4,3,3,2,2,4,2,1,2,1,2,3,3,7,3,1,0,0,0,0,0,1,2,2,2,2,3,0,2,3,0,2,3,6,2,0,3,1,1,1,0,0,0,0,5,0,2,0,1,1,2,2,0,2,2,1,0,2,1,0,2,1,4,1,0,0,0,0,4,3,2,3,2,2,2,1,1,2,2,2,3,7,2,4,1,1,2,1,0,0,0,0,2,1,3,1,3,1,2,1,1,1,2,2,2,6,2,2,1,1,1,1,0,0,0,0,2,0,1,1,2,2,2,1,3,1,3,1,1,2,3,2,0,0,2,2,0,0,0,0,2,1,1,1,2,3,4,1,3,3,2,1,2,1,2,1,0,1,2,2,0,0,0,0,2,1,1,2,2,2,3,4,5,4,1,4,2,3,2,4,3,4,2,3,0,0,0,0,2,2,1,4,5,4,5,2,3,4,6,8,3,6,6,4,4,5,2,4,0,0,0,0,1,1,0,3,1,0,3,2,3,3,6,2,1,1,2,1,0,0,0,1,0,0,0,0,3,1,1,2,7,2,3,2,2,3,2,2,2,2,4,3,2,3,1,2,0,0,0,0,4,3,2,2,3,2,3,2,2,4,1,0,5,1,3,1,3,2,5,2,0,0,0,0,4,4,2,3,2,1,3,6,2,5,3,1,3,4,2,4,2,5,2,4,0,0,0,0,1,1,3,3,2,2,1,1,3,1,3,4,3,1,3,6,4,1,1,2,0,0,0,0,0,1,1,2,1,1,0,0,0,70,0,3,2,0,2,0,2,2,4,0,0,0,0,0,3,1,6,2,2,4,2,1,2,3,3,0,1,1,1,3,3,2,1,1,0,0,0,0,1,1,1,3,3,3,2,3,3,2,2,3,2,1,1,0,1,4,5,3,0,0,0,0,3,2,1,5,2,3,2,3,1,2,2,3,0,2,4,2,2,1,2,3,0,0,0,0,1,2,3,1,4,2,1,1,2,2,1,1,0,1,1,3,2,2,2,1,0,0,0,0,2,3,1,1,3,2,0,1,2,1,1,1,0,2,0,0,1,5,5,2,0,0,0,0,2,2,3,1,4,3,3,4,1,2,1,4,1,4,3,2,4,2,3,3,0,0,0,0,0,3,1,3,1,1,1,4,0,2,3,1,1,2,0,1,0,2,0,1,0,0,0,0,2,2,6,3,3,5,5,4,4,5,3,2,2,6,4,5,3,6,6,5,0,0,0,0,5,1,3,1,2,3,4,5,2,1,4,1,1,1,2,2,2,1,1,2,0,0,0,0,5,3,1,2,3,3,1,2,2,1,4,1,2,1,2,1,2,3,7,2,0,0,0,0,2,2,4,2,2,2,5,4,3,3,2,1,1,2,3,4,3,2,6,3,0,0,0,0,2,1,1,3,2,3,3,1,5,1,2,0,1,1,3,2,0,3,1,1,0,0,0,0,3,3,2,1,1,4,2,1,5,2,1,2,3,2,3,0,4,3,1,3,0,0,0,0,1,4,0,1,2,1,3,3,1,0,2,4,2,2,5,2,1,2,1,1,0,0,0,0,4,3,1,1,2,2,2,2,1,1,2,1,0,2,3,1,2,1,1,3],"en":[1,0,0,58,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,50,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,57,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,59,1,0,12,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65,0,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,29,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,53,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,22,0,19,52,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,34,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,37,0,44,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,44,41,53,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,51,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,0,0,43,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0,0,0,0,0,0,0,0,0,46,57,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,61,27,58,17,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,26,0,0,20,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,31,22,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,0,59,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,55,55,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,58,0,31,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,42,0,22,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,56,0,30,28,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,53,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"eqs":[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"ens":[1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"diag":[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,0,0,0,0,2,1,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1,2,1,1,0,0,0,0,1,2,1,2,2,2,1,1,2,2,1,1,2,1,2,2,1,2,1,2,0,0,0,0,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,2,1,1,2,0,0,0,0,1,1,1,2,1,1,1,2,2,2,1,1,1,1,1,1,2,2,2,2,0,0,0,0,1,2,2,2,1,1,1,2,1,2,1,2,2,1,1,1,2,2,1,1,0,0,0,0,1,1,2,2,2,1,1,2,1,1,1,2,1,1,1,2,2,2,1,1,0,0,0,0,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,2,2,2,1,2,2,1,1,1,1,1,1,2,2,1,2,2,2,2,2,0,0,0,0,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,1,2,1,2,1,1,1,2,0,0,0,0,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,1,0,0,0,0,2,2,1,1,1,1,2,2,1,2,1,1,1,2,1,1,1,2,2,1,0,0,0,0,2,2,2,1,2,2,2,2,2,3,2,1,1,2,1,2,2,1,1,2,0,0,0,0,1,2,1,1,1,1,1,1,2,1,1,2,2,1,2,1,1,1,1,2,0,0,0,0,2,2,2,1,1,1,1,1,1,1,1,1,1,2,2,2,1,1,1,1,0,0,0,0,1,1,1,1,1,1,2,1,2,1,1,1,2,1,1,1,1,2,1,1,0,0,0,0,2,1,1,2,1,1,2,1,1,1,2,2,2,2,1,1,1,1,1,2,0,0,0,0,1,1,2,2,1,1,2,1,1,2,2,2,2,1,2,2,2,1,1,1,0,0,0,0,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,2,1,2,1,2,2,2,1,2,1,1,1,2,1,2,2,2,2,2,2,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,2,1,2,1,1,1,1,1,2,1,2,2,2,1,2,1,2,1,1,0,0,0,0,1,1,2,1,1,1,2,1,1,1,1,2,1,2,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,0,0,0,0,1,2,2,1,1,1,1,2,1,2,1,2,1,2,1,1,2,1,2,2,0,0,0,0,1,1,1,1,2,1,1,2,1,2,2,1,1,1,1,2,1,1,2,1,0,0,0,0,1,1,2,1,1,2,1,1,2,2,1,1,1,1,1,1,1,1,2,2,0,0,0,0,1,1,2,2,1,1,1,1,2,2,1,1,2,1,1,1,1,1,2,1],"start":"2026-09-01T00:00","status_labels":["IDLE STATE","NORMAL","STANDBY REVIEW","CRITICAL ANOMALY"],"diag_labels":["Plant idle / scheduled downtime; no equipment-performance anomaly generated.","High load and vibration pattern","Operating within expected envelope","Possible equipment overload / blockage"]},"anomaly_cfg":[{"metric":"Temperature_C","nl":35,"nh":52,"cl":30,"ch":60,"w":0.16},{"metric":"Motor_Current_A","nl":55,"nh":90,"cl":45,"ch":100,"w":0.18},{"metric":"Vibration_mm_s","nl":1,"nh":3.5,"cl":0.5,"ch":5.5,"w":0.18},{"metric":"Moisture_pct","nl":24,"nh":38,"cl":18,"ch":45,"w":0.1},{"metric":"Throughput_tph","nl":4,"nh":5.5,"cl":3.5,"ch":6,"w":0.14},{"metric":"SEC_kWh_t","nl":28,"nh":36,"cl":26,"ch":42,"w":0.12},{"metric":"Recovery_Rate_pct","nl":78,"nh":86,"cl":72,"ch":90,"w":0.12}],"alerts":[{"ts":"2026-09-15 13:00","state":"RUNNING","sev":"CRITICAL ANOMALY","diag":"Possible equipment overload / blockage","eq":70,"en":9,"temp":57,"curr":94,"vib":4.8,"tph":3.9,"action":"Inspect primary processing equipment; check feed path, drive load and bearings."},{"ts":"2026-09-01 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":58,"temp":39.7,"curr":12.5,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-02 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":50,"temp":39,"curr":11.6,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-03 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":57,"temp":38.8,"curr":12.4,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-04 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":59,"temp":38.1,"curr":11.5,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-05 01:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":65,"temp":38.8,"curr":12,"vib":0.25,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-05 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":35,"temp":39.6,"curr":12.4,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-07 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":53,"temp":38.8,"curr":12.4,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-09 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":52,"temp":39.6,"curr":12.4,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-11 01:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":37,"temp":39.2,"curr":12.5,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-11 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":44,"temp":39.1,"curr":11.7,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-12 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":44,"temp":38.9,"curr":12.6,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-12 01:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":41,"temp":38.5,"curr":11.6,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-12 02:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":53,"temp":39,"curr":11.8,"vib":0.25,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-13 02:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":51,"temp":39.1,"curr":12.1,"vib":0.25,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-14 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":43,"temp":39.7,"curr":12.6,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-16 01:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":46,"temp":38.5,"curr":11.5,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-16 02:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":57,"temp":38.9,"curr":11.7,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-17 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":61,"temp":38.2,"curr":11.6,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-17 02:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":58,"temp":39.1,"curr":12,"vib":0.25,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-20 02:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":59,"temp":38.9,"curr":11.6,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-20 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":40,"temp":39.2,"curr":11.8,"vib":0.25,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-22 02:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":55,"temp":39.2,"curr":12.2,"vib":0.25,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-22 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":55,"temp":39.6,"curr":12.4,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-25 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":58,"temp":38.1,"curr":11.4,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-26 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":42,"temp":38.3,"curr":11.7,"vib":0.24,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-29 00:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":56,"temp":38.9,"curr":12.6,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-30 02:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":53,"temp":39.1,"curr":12.1,"vib":0.25,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."},{"ts":"2026-09-30 03:00","state":"IDLE","sev":"STANDBY REVIEW","diag":"Plant idle / scheduled downtime; no equipment-performance anomaly generated.","eq":0,"en":41,"temp":39.5,"curr":12.3,"vib":0.26,"tph":0,"action":"Monitor standby consumption; do not raise equipment-fault alarm unless standby energy is abnormal."}],"dq":{"records":5040,"hours":720,"status":{"Valid":4800,"Missing":240},"verification":{"Verified":4800,"Review":240},"source":{"Meter":1440,"SCADA":2880,"PLC":720},"sensors":[{"sensor":"MTR-ELEC-01","equipment":"MAIN-ELECTRICAL-METER","measure":"Electricity","unit":"kWh","source":"Meter","last_cal":"2026-07-01","valid":720,"missing":0,"verified":720,"review":0,"outliers":0,"cal_valid":720},{"sensor":"MTR-THRU-01","equipment":"FEED-SYSTEM","measure":"Throughput","unit":"t","source":"Meter","last_cal":"2026-07-01","valid":720,"missing":0,"verified":720,"review":0,"outliers":0,"cal_valid":720},{"sensor":"SNS-TEMP-01","equipment":"PRIMARY-PROCESS","measure":"Temperature","unit":"°C","source":"SCADA","last_cal":"2026-07-01","valid":720,"missing":0,"verified":720,"review":0,"outliers":0,"cal_valid":720},{"sensor":"SNS-CURR-01","equipment":"PRIMARY-PROCESS","measure":"Motor Current","unit":"A","source":"SCADA","last_cal":"2026-07-01","valid":720,"missing":0,"verified":720,"review":0,"outliers":0,"cal_valid":720},{"sensor":"SNS-VIB-01","equipment":"PRIMARY-PROCESS","measure":"Vibration","unit":"mm/s","source":"SCADA","last_cal":"2026-07-01","valid":720,"missing":0,"verified":720,"review":0,"outliers":0,"cal_valid":720},{"sensor":"SNS-MOIST-01","equipment":"FEED-SYSTEM","measure":"Moisture","unit":"%","source":"SCADA","last_cal":"2026-07-01","valid":600,"missing":120,"verified":600,"review":120,"outliers":0,"cal_valid":720},{"sensor":"KPI-SEC-01","equipment":"PLANT-MRV","measure":"SEC","unit":"kWh/t","source":"PLC","last_cal":"2026-07-01","valid":600,"missing":120,"verified":600,"review":120,"outliers":0,"cal_valid":720}]},"interventions":[{"name":"Reduce idle equipment operation","saving":1.2,"evidence":"Idle-state + standby-energy monitoring","logic":"Shut down unnecessary equipment during scheduled idle windows.","priority":"High","owner":"Operations","kpi":"Standby kWh/hr","status":"Pilot"},{"name":"Shredder operating optimization","saving":1.5,"evidence":"Motor current + vibration anomaly trends","logic":"Operate closer to stable load envelope; reduce overload/inefficient cycling.","priority":"High","owner":"Process","kpi":"Shredder kWh/t","status":"Pilot"},{"name":"Conveyor scheduling","saving":0.8,"evidence":"Operating-state + throughput profile","logic":"Synchronize conveyor runtime with feed availability.","priority":"Medium","owner":"Operations","kpi":"Conveyor runtime/hr","status":"Pilot"},{"name":"Sorting optimization","saving":1,"evidence":"Recovery rate + throughput","logic":"Tune sorting setpoints while preserving recovered-material yield.","priority":"High","owner":"Process","kpi":"Recovery %","status":"Pilot"},{"name":"Preventive maintenance","saving":0.9,"evidence":"Equipment anomaly + predictive rules","logic":"Act on vibration/current/temperature trends before fault escalation.","priority":"High","owner":"Maintenance","kpi":"Unplanned downtime","status":"Pilot"},{"name":"Other process optimization","saving":0.9,"evidence":"SEC trend + MRV KPI review","logic":"Continuous improvement actions identified from verified MRV trends.","priority":"Medium","owner":"Plant Manager","kpi":"SEC kWh/t","status":"Pilot"}],"business":{"tariff":8,"capex":1500000,"software":180000,"maintenance":120000,"days":330,"sec_base":32.25874602965711,"sec_opt":25.95788136266798,"tpd":99.03636666666668,"grid_ef":0.716}};
+</script>
+<script>
+(() => {
+const D = window.DV_DATA;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (v, d = 0) => v == null || isNaN(v) ? "–" : Number(v).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
+const inr = v => {
+  if (v == null || !isFinite(v)) return "–";
+  const a = Math.abs(v), s = v < 0 ? "−" : "";
+  if (a >= 1e7) return `${s}₹${fmt(a / 1e7, 2)} cr`;
+  if (a >= 1e5) return `${s}₹${fmt(a / 1e5, 1)} lakh`;
+  return `${s}₹${fmt(a)}`;
+};
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const dLabel = iso => { const [y, m, d] = iso.split("-"); return `${+d} ${MONTHS[+m - 1]}`; };
+const sum = a => a.reduce((s, v) => s + (v || 0), 0);
+const mean = a => { const f = a.filter(v => v != null); return sum(f) / f.length; };
+
+/* ---------- tooltip ---------- */
+const tip = $("#tip");
+function showTip(e, title, rows) {
+  tip.innerHTML = `<div class="t">${esc(title)}</div>` + rows.map(r =>
+    `<div class="r"><span>${r.c ? `<i class="sw box" style="background:${r.c}"></i>` : ""}${esc(r.k)}</span><b>${esc(r.v)}</b></div>`).join("");
+  tip.hidden = false;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = e.clientY - h - pad;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+
+/* ---------- chart helpers ---------- */
+function niceTicks(min, max, n = 4) {
+  if (min === max) { min -= 1; max += 1; }
+  const step0 = (max - min) / n, mag = 10 ** Math.floor(Math.log10(step0)), err = step0 / mag;
+  const step = (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1) * mag;
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step, t = [];
+  for (let v = lo; v <= hi + step / 2; v += step) t.push(+v.toFixed(10));
+  return t;
+}
+const renders = [];
+function chart(el, fn) { const r = () => { if (el.offsetParent !== null) fn(el, el.clientWidth || 600); }; renders.push(r); r(); }
+let rT; addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => renders.forEach(f => f()), 120); });
+
+function legend(el, items) {
+  el.innerHTML = items.map(i => `<span><i class="sw ${i.box ? "box" : ""} ${i.dash ? "dash" : ""}" style="background:${i.c};--c:${i.c}"></i>${esc(i.k)}</span>`).join("");
+}
+
+/* Line chart with crosshair. o = {labels, series:[{name, values, c, dash}], unit, d, yMin, yMax, ref:{v,label}, band:{lo,hi}, H} */
+function lineChart(el, o) {
+  chart(el, (el, W) => {
+    const H = o.H || 240, m = { t: 14, r: 18, b: 26, l: 40 };
+    const n = o.labels.length, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const vals = o.series.flatMap(s => s.values).filter(v => v != null);
+    if (o.ref) vals.push(o.ref.v);
+    if (o.band) vals.push(o.band.lo, o.band.hi);
+    const ticks = niceTicks(o.yMin ?? Math.min(...vals), o.yMax ?? Math.max(...vals), o.ticks || 4);
+    const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const x = i => m.l + (n === 1 ? iw / 2 : i * iw / (n - 1));
+    const y = v => m.t + ih - (v - y0) / (y1 - y0) * ih;
+    let s = "";
+    if (o.shade) o.shade.forEach(([a, b]) => { s += `<rect x="${x(a) - iw / (n - 1) / 2}" y="${m.t}" width="${(b - a + 1) * iw / (n - 1)}" height="${ih}" style="fill:var(--idle);opacity:.7"/>`; });
+    if (o.band) s += `<rect x="${m.l}" y="${y(o.band.hi)}" width="${iw}" height="${y(o.band.lo) - y(o.band.hi)}" style="fill:var(--accent-wash)"/>`;
+    ticks.forEach(t => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t, o.td ?? 0)}</text>`; });
+    const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 64))));
+    o.labels.forEach((l, i) => { if (i % every === 0) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(o.xFmt ? o.xFmt(l, i) : l)}</text>`; });
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${m.t + ih}" y2="${m.t + ih}" style="stroke:var(--axis)"/>`;
+    if (o.ref) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(o.ref.v)}" y2="${y(o.ref.v)}" style="stroke:var(--ink-2);stroke-dasharray:3 4"/><text x="${W - m.r}" y="${y(o.ref.v) + (o.refBelow ? 15 : -5)}" text-anchor="end" class="lbl" style="paint-order:stroke;stroke:var(--surface);stroke-width:4px">${esc(o.ref.label)}</text>`;
+    o.series.forEach(se => {
+      let d = "", pen = false;
+      se.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
+      s += `<path d="${d}" style="fill:none;stroke:${se.c};stroke-width:2;stroke-linejoin:round;stroke-linecap:round${se.dash ? ";stroke-dasharray:5 4" : ""}"/>`;
+      let li = se.values.length - 1; while (li > 0 && se.values[li] == null) li--;
+      if (!o.noEnd && se.values[li] != null) s += `<circle cx="${x(li)}" cy="${y(se.values[li])}" r="4" style="fill:${se.c};stroke:var(--surface);stroke-width:2"/>`;
+    });
+    (o.marks || []).forEach(mk => { s += `<circle cx="${x(mk.i)}" cy="${y(mk.v)}" r="6" style="fill:var(--critical);stroke:var(--surface);stroke-width:2"/>`; });
+    s += `<g class="xh" style="display:none"><line y1="${m.t}" y2="${m.t + ih}" style="stroke:var(--ink-2);stroke-width:1"/>${o.series.map(se => `<circle r="4" style="fill:${se.c};stroke:var(--surface);stroke-width:2"/>`).join("")}</g>`;
+    s += `<rect class="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" style="fill:transparent"/>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(o.aria || "")}">${s}</svg>`;
+    const svg = el.firstChild, xh = svg.querySelector(".xh"), line = xh.querySelector("line"), dots = xh.querySelectorAll("circle");
+    svg.querySelector(".hit").addEventListener("pointermove", e => {
+      const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+      const i = Math.max(0, Math.min(n - 1, Math.round((px - m.l) / (iw / (n - 1 || 1)))));
+      xh.style.display = ""; line.setAttribute("x1", x(i)); line.setAttribute("x2", x(i));
+      o.series.forEach((se, k) => { const v = se.values[i]; dots[k].style.display = v == null ? "none" : ""; if (v != null) { dots[k].setAttribute("cx", x(i)); dots[k].setAttribute("cy", y(v)); } });
+      showTip(e, o.tipTitle ? o.tipTitle(i) : o.labels[i], o.series.map(se => ({ c: se.c, k: se.name, v: se.values[i] == null ? "–" : `${fmt(se.values[i], o.d ?? 1)} ${o.unit || ""}` })).concat(o.tipExtra ? o.tipExtra(i) : []));
+    });
+    svg.querySelector(".hit").addEventListener("pointerleave", () => { xh.style.display = "none"; hideTip(); });
+  });
+}
+
+/* Vertical bar chart. o = {labels, values, c, unit, d, ref, H, colorFn} */
+function barChart(el, o) {
+  chart(el, (el, W) => {
+    const H = o.H || 220, m = { t: 14, r: 12, b: 26, l: 44 };
+    const n = o.values.length, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const mx = Math.max(...o.values, o.ref ? o.ref.v : 0);
+    const ticks = niceTicks(o.yMin ?? 0, mx, 4), y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const y = v => m.t + ih - (v - y0) / (y1 - y0) * ih;
+    const bw = iw / n, gap = Math.max(2, bw * 0.22);
+    let s = "";
+    ticks.forEach(t => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`; });
+    o.values.forEach((v, i) => {
+      const x = m.l + i * bw + gap / 2, w = bw - gap, top = y(v), h = y(y0) - top, r = Math.min(4, w / 2, h);
+      s += `<path data-i="${i}" d="M${x},${y(y0)} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${y(y0)} Z" style="fill:${o.colorFn ? o.colorFn(v, i) : o.c}"/>`;
+    });
+    const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 64))));
+    o.labels.forEach((l, i) => { if (i % every === 0) s += `<text x="${m.l + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle">${esc(o.xFmt ? o.xFmt(l) : l)}</text>`; });
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(y0)}" y2="${y(y0)}" style="stroke:var(--axis)"/>`;
+    if (o.ref) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(o.ref.v)}" y2="${y(o.ref.v)}" style="stroke:var(--ink-2);stroke-dasharray:3 4"/><text x="${o.refLeft ? m.l + 4 : W - m.r}" y="${y(o.ref.v) - 5}" text-anchor="${o.refLeft ? "start" : "end"}" class="lbl" style="paint-order:stroke;stroke:var(--surface);stroke-width:4px">${esc(o.ref.label)}</text>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${s}</svg>`;
+    el.firstChild.addEventListener("pointermove", e => {
+      const i = e.target.dataset?.i; if (i == null) return hideTip();
+      showTip(e, o.tipTitle ? o.tipTitle(+i) : o.labels[i], [{ c: o.colorFn ? o.colorFn(o.values[i], +i) : o.c, k: o.name || "Value", v: `${fmt(o.values[i], o.d ?? 1)} ${o.unit || ""}` }].concat(o.tipExtra ? o.tipExtra(+i) : []));
+    });
+    el.firstChild.addEventListener("pointerleave", hideTip);
+  });
+}
+
+/* Waterfall. steps = [{label, v, total:bool}] */
+function waterfall(el, o) {
+  chart(el, (el, W) => {
+    const H = o.H || 260, m = { t: 22, r: 12, b: 40, l: 48 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b, n = o.steps.length;
+    let run = 0; const bars = o.steps.map(st => {
+      if (st.total) { const b = { a: 0, b: st.v, st }; run = st.v; return b; }
+      const b = { a: run, b: run + st.v, st }; run += st.v; return b;
+    });
+    const all = bars.flatMap(b => [b.a, b.b]);
+    const ticks = niceTicks(o.yMin ?? Math.min(0, ...all), Math.max(...all), 4), y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const y = v => m.t + ih - (v - y0) / (y1 - y0) * ih;
+    const bw = iw / n, gap = Math.max(6, bw * 0.28);
+    let s = "";
+    ticks.forEach(t => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text x="${m.l - 6}" y="${y(t) + 4}" text-anchor="end">${fmt(t)}</text>`; });
+    bars.forEach((b, i) => {
+      const x = m.l + i * bw + gap / 2, w = bw - gap, top = y(Math.max(b.a, b.b)), bot = y(Math.min(b.a, b.b));
+      const c = b.st.total ? (b.st.c || "var(--s1)") : (b.st.v < 0 ? o.neg : o.pos);
+      s += `<rect data-i="${i}" x="${x}" y="${top}" width="${w}" height="${Math.max(1, bot - top)}" rx="3" style="fill:${c}"/>`;
+      if (i < n - 1) { const yy = y(b.b); s += `<line x1="${x + w}" x2="${x + bw}" y1="${yy}" y2="${yy}" style="stroke:var(--axis);stroke-dasharray:2 3"/>`; }
+      s += `<text class="val" x="${x + w / 2}" y="${top - 6}" text-anchor="middle">${b.st.total ? "" : b.st.v > 0 ? "+" : "−"}${fmt(Math.abs(b.st.v), o.d ?? 0)}</text>`;
+      const words = b.st.label.split(" "), lines = []; let cur = "";
+      const maxCh = Math.max(6, Math.floor(bw / 6.4));
+      words.forEach(wd => { if ((cur + " " + wd).trim().length > maxCh && cur) { lines.push(cur); cur = wd; } else cur = (cur + " " + wd).trim(); });
+      lines.push(cur);
+      lines.slice(0, 2).forEach((ln, k) => { s += `<text class="lbl" x="${x + w / 2}" y="${H - m.b + 16 + k * 14}" text-anchor="middle">${esc(k === 1 && lines.length > 2 ? ln + "…" : ln)}</text>`; });
+    });
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--axis)"/>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">${s}</svg>`;
+    el.firstChild.addEventListener("pointermove", e => {
+      const i = e.target.dataset?.i; if (i == null) return hideTip();
+      const b = bars[i]; showTip(e, b.st.label, [{ k: b.st.total ? "Total" : "Change", v: `${fmt(b.st.v, o.d ?? 0)} ${o.unit}` }].concat(b.st.detail ? [{ k: "Basis", v: b.st.detail }] : []));
+    });
+    el.firstChild.addEventListener("pointerleave", hideTip);
+  });
+}
+
+function hbars(el, items, o = {}) {
+  const mx = o.max ?? Math.max(...items.map(i => i.v));
+  el.innerHTML = items.map(i => `<div class="bar-row"><span class="name">${i.html || esc(i.k)}</span><span class="bar-track"><span class="bar-fill" style="width:${(i.v / mx * 100).toFixed(1)}%;background:${i.c || "var(--s1)"}"></span></span><span class="v">${i.label ?? fmt(i.v, o.d ?? 0)}</span></div>`).join("");
+}
+
+function table(el, cols, rows) {
+  el.innerHTML = `<thead><tr>${cols.map(c => `<th class="${c.n ? "n" : ""}">${esc(c.h)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${cols.map(c => `<td class="${c.n ? "n" : ""}">${c.f ? c.f(r) : esc(r[c.k])}</td>`).join("")}</tr>`).join("")}</tbody>`;
+}
+
+const ICON = {
+  critical: `<svg viewBox="0 0 14 14"><path d="M7 1 L13 12 H1 Z" style="fill:var(--critical)"/><path d="M7 5v3.5M7 10.2v.3" style="stroke:#fff;stroke-width:1.6;stroke-linecap:round"/></svg>`,
+  warning: `<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" style="fill:var(--warning)"/><path d="M7 3.8v4M7 10v.3" style="stroke:#1a1a19;stroke-width:1.6;stroke-linecap:round"/></svg>`,
+  good: `<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" style="fill:var(--good)"/><path d="M4.3 7.2l1.8 1.8 3.6-3.8" style="fill:none;stroke:#fff;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></svg>`,
+  idle: `<svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.3" style="fill:none;stroke:var(--muted);stroke-width:1.5"/><path d="M5 7h4" style="stroke:var(--muted);stroke-width:1.5;stroke-linecap:round"/></svg>`,
+};
+const sevHtml = s => {
+  const map = { "CRITICAL ANOMALY": ["critical", "Critical"], "WARNING": ["warning", "Warning"], "STANDBY REVIEW": ["warning", "Standby review"], "NORMAL": ["good", "Normal"], "IDLE STATE": ["idle", "Idle"] };
+  const [ic, label] = map[s] || ["idle", s];
+  return `<span class="sev">${ICON[ic]}${esc(label)}</span>`;
+};
+
+/* ---------- derived figures ---------- */
+const daily = D.daily, last = daily[daily.length - 1], K = D.kpis;
+const kv = name => K[name]?.value;
+const H = D.hourly, NH = H.t.length;
+const stLbl = H.status_labels;
+const eqCrit = H.eqs.filter(v => stLbl[v] === "CRITICAL ANOMALY").length;
+const eqWarn = H.eqs.filter(v => stLbl[v] === "WARNING").length;
+const standby = H.ens.filter(v => stLbl[v] === "STANDBY REVIEW").length;
+const coverage = D.dq.verification.Verified / D.dq.records;
+const mrvReady = coverage >= 0.95;
+
+/* ---------- header ---------- */
+$("#statusRow").innerHTML = `
+  <span class="pill"><i class="dot" style="background:${mrvReady ? "var(--good)" : "var(--warning)"}"></i>${mrvReady ? "Ready for review" : "Check data quality"}</span>
+  <span class="pill"><i class="dot" style="background:var(--critical)"></i>${eqCrit} critical alert${eqCrit === 1 ? "" : "s"}</span>
+  <span class="pill src">Latest day ${dLabel(last.date)} 2026</span>`;
+
+/* ---------- tabs ---------- */
+const TABS = $$(".tab").map(b => b.dataset.tab);
+function selectTab(t, push) {
+  if (!TABS.includes(t)) t = "overview";
+  $$(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+  $$(".view").forEach(v => { v.hidden = v.dataset.view !== t; });
+  try { localStorage.setItem("dv-tab", t); } catch (e) {}
+  if (push && location.hash !== "#" + t) history.replaceState(null, "", "#" + t);
+  renders.forEach(f => f());
+}
+$("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) selectTab(b.dataset.tab, true); });
+$("#tabs").addEventListener("keydown", e => {
+  if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const i = TABS.indexOf($(".tab[aria-selected=true]").dataset.tab), j = (i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
+  selectTab(TABS[j], true); $(`.tab[data-tab=${TABS[j]}]`).focus();
+});
+
+/* ---------- OVERVIEW ---------- */
+$("#snapSub").textContent = `100 TPD aluminium dross processing line. Latest available day is ${dLabel(last.date)} 2026; period totals cover 1–30 September.`;
+function spark(vals, c) {
+  const w = 120, h = 28, mn = Math.min(...vals), mx = Math.max(...vals), x = i => i * w / (vals.length - 1), y = v => h - 3 - (v - mn) / (mx - mn || 1) * (h - 6);
+  const d = vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w},${h} L0,${h} Z" style="fill:${c};opacity:.12"/><path d="${d}" style="fill:none;stroke:${c};stroke-width:1.5;vector-effect:non-scaling-stroke"/></svg>`;
+}
+const tile = (k, v, unit, d, sp) => `<div class="tile"><span class="k">${k}</span><span class="v">${v}<small>${unit}</small></span>${d ? `<span class="d">${d}</span>` : ""}${sp || ""}</div>`;
+const col = k => daily.map(d => d[k]);
+$("#latestTiles").innerHTML =
+  tile("Tonnes processed", fmt(last.t, 1), "t", `30-day avg ${fmt(mean(col("t")), 1)} t`, spark(col("t"), "var(--s1)")) +
+  tile("Energy consumed", fmt(last.kwh), "kWh", `30-day avg ${fmt(mean(col("kwh")))} kWh`, spark(col("kwh"), "var(--s1)")) +
+  tile("SEC", fmt(last.sec, 2), "kWh/t", `Benchmark 32 · target 26`, spark(col("sec"), "var(--s2)")) +
+  tile("CO₂e per tonne", fmt(last.co2t, 2), "kg/t", `at 0.716 kg CO₂e/kWh`, spark(col("co2t"), "var(--s2)")) +
+  tile("Recovery rate", fmt(last.rec, 1), "%", `Baseline 82% · target 84%`, spark(col("rec"), "var(--s3)")) +
+  tile("Availability", fmt(last.avail, 1), "%", `Target 95%`, spark(col("avail"), "var(--s3)"));
+$("#periodTiles").innerHTML =
+  tile("30-day throughput", fmt(kv("Dataset throughput")), "t", `${fmt(kv("Average daily throughput"), 1)} t/day average`) +
+  tile("Baseline electricity", fmt(kv("Baseline electricity")), "kWh", `SEC ${fmt(kv("Baseline SEC"), 2)} kWh/t`) +
+  tile("Baseline emissions", fmt(kv("Baseline emissions") / 1000, 1), "t CO₂e", `30 days`) +
+  tile("Energy saving potential", fmt(kv("Energy saving")), "kWh", `<span class="delta-good">−${fmt(kv("Energy reduction"), 1)}%</span> SEC under scenario`) +
+  tile("Cost saving potential", inr(kv("Energy saving") * D.business.tariff), "", `per 30 days at ₹${D.business.tariff}/kWh`) +
+  tile("CO₂e avoided (scenario)", fmt(kv("CO2e avoided") / 1000, 1), "t", `per 30 days, throughput preserved`);
+
+const labels = daily.map(d => d.date);
+legend($("#secLegend"), [{ k: "Baseline SEC (measured)", c: "var(--s2)" }, { k: "Optimized SEC (scenario)", c: "var(--s1)", dash: true }]);
+lineChart($("#secChart"), {
+  labels, xFmt: dLabel, unit: "kWh/t", d: 2, yMin: 24, yMax: 34, td: 0, H: 260,
+  series: [{ name: "Baseline", values: col("sec"), c: "var(--s2)" }, { name: "Optimized", values: col("sec_opt"), c: "var(--s1)", dash: true }],
+  ref: { v: 32, label: "32 kWh/t benchmark" }, refBelow: true,
+  tipTitle: i => `${dLabel(labels[i])} 2026`,
+  tipExtra: i => [{ k: "Energy saved", v: `${fmt(daily[i].saved)} kWh` }],
+  aria: "Daily SEC baseline versus optimized scenario",
+});
+table($("#dailyTable"), [
+  { h: "Date", f: r => dLabel(r.date) }, { h: "Tonnes", n: 1, f: r => fmt(r.t, 1) }, { h: "kWh", n: 1, f: r => fmt(r.kwh) },
+  { h: "SEC", n: 1, f: r => fmt(r.sec, 2) }, { h: "Opt. SEC", n: 1, f: r => fmt(r.sec_opt, 2) }, { h: "Recovery %", n: 1, f: r => fmt(r.rec, 1) },
+  { h: "CO₂e kg", n: 1, f: r => fmt(r.co2) }, { h: "Avail. %", n: 1, f: r => fmt(r.avail, 1) }, { h: "Downtime min", n: 1, f: r => fmt(r.down) },
+], daily);
+barChart($("#tputChart"), {
+  labels, values: col("t"), c: "var(--s1)", unit: "t", d: 1, xFmt: dLabel, name: "Throughput",
+  ref: { v: 100, label: "100 TPD design" }, tipTitle: i => `${dLabel(labels[i])} 2026`,
+  tipExtra: i => [{ k: "Availability", v: `${fmt(daily[i].avail, 1)} %` }, { k: "Downtime", v: `${fmt(daily[i].down)} min` }],
+});
+legend($("#recLegend"), [{ k: "Measured", c: "var(--s3)" }, { k: "Optimized (scenario)", c: "var(--s1)", dash: true }]);
+lineChart($("#recChart"), {
+  labels, xFmt: dLabel, unit: "%", d: 2, yMin: 80, yMax: 86, H: 220,
+  series: [{ name: "Measured", values: col("rec"), c: "var(--s3)" }, { name: "Optimized", values: col("rec_opt"), c: "var(--s1)", dash: true }],
+  ref: { v: 82, label: "82% baseline" }, tipTitle: i => `${dLabel(labels[i])} 2026`,
+});
+$("#scopeNote").innerHTML = `<b>Two sources, two scopes.</b> The workbook is a synthetic 30-day hourly dataset for a 100 TPD dross processing line and drives the Overview, Energy, Operations and Data quality tabs. The hackathon submission describes dMRV for compressed biogas plants, with credit rules, a registry and a business model, and drives the Carbon credits and Rollout tabs. Each view names its source.`;
+
+/* ---------- ENERGY ---------- */
+const pri = s => s >= 25 ? "High" : s >= 18 ? "Medium" : "Low";
+hbars($("#equipBars"), D.equipment.map(e => ({
+  html: `${esc(e.name)} <span class="chip ${pri(e.share) === "High" ? "hi" : ""}">${pri(e.share)}</span>`, v: e.share,
+  label: `${fmt(e.share)}% · ${fmt(e.sec, 2)} kWh/t`,
+  c: pri(e.share) === "High" ? "var(--s2)" : "var(--s1)",
+})), { max: 40 });
+const ints = D.interventions;
+const SHORT = { "Reduce idle equipment operation": "Idle", "Shredder operating optimization": "Shredder", "Conveyor scheduling": "Conveyor", "Sorting optimization": "Sorting", "Preventive maintenance": "Maint.", "Other process optimization": "Other" };
+const baseSec = 32.26, optSec = +(baseSec - sum(ints.map(i => i.saving))).toFixed(2);
+waterfall($("#bridgeChart"), {
+  unit: "kWh/t", d: 1, yMin: 0, neg: "var(--s3)", pos: "var(--s2)", H: 280,
+  steps: [{ label: "Baseline", v: baseSec, total: true, c: "var(--s2)" }]
+    .concat(ints.map(i => ({ label: SHORT[i.name] || i.name, v: -i.saving, detail: `${i.name}: ${i.evidence}` })))
+    .concat([{ label: "Optimized", v: optSec, total: true, c: "var(--s1)" }]),
+});
+table($("#intTable"), [
+  { h: "Intervention", f: r => `<b>${esc(r.name)}</b><div class="sub">${esc(r.logic)}</div>` },
+  { h: "kWh/t saved", n: 1, f: r => fmt(r.saving, 1) },
+  { h: "Evidence", k: "evidence" }, { h: "KPI", k: "kpi" },
+  { h: "Priority", f: r => `<span class="chip ${r.priority === "High" ? "hi" : ""}">${esc(r.priority)}</span>` },
+  { h: "Owner", k: "owner" },
+], ints);
+barChart($("#savedChart"), {
+  labels, values: col("saved"), c: "var(--s3)", unit: "kWh", d: 0, xFmt: dLabel, name: "Energy saved",
+  tipTitle: i => `${dLabel(labels[i])} 2026`,
+  tipExtra: i => [{ k: "CO₂e avoided", v: `${fmt(daily[i].co2_avoided)} kg` }, { k: "Optimized SEC", v: `${fmt(daily[i].sec_opt, 2)} kWh/t` }],
+});
+const B = { ...D.business };
+const bcFields = [
+  ["tariff", "Tariff (₹/kWh)", 0.5], ["capex", "System CAPEX (₹)", 50000], ["software", "Software / analytics (₹/yr)", 10000],
+  ["maintenance", "Maintenance / support (₹/yr)", 10000], ["days", "Operating days / year", 5], ["grid_ef", "Grid factor (kg CO₂e/kWh)", 0.001],
+];
+$("#bcForm").innerHTML = bcFields.map(([k, l, st]) => `<label class="field" for="bc-${k}">${l}<input type="number" id="bc-${k}" data-k="${k}" step="${st}" min="0" value="${B[k]}"></label>`).join("");
+function calcBC() {
+  const red = (B.sec_base - B.sec_opt) / B.sec_base, kwh = (B.sec_base - B.sec_opt) * B.tpd * B.days, rs = kwh * B.tariff, net = rs - B.software - B.maintenance;
+  const pb = net > 0 ? B.capex / net : null;
+  $("#bcOut").innerHTML = [
+    ["SEC reduction", `${fmt(red * 100, 1)}%`], ["Annual energy saved", `${fmt(kwh / 1000, 1)} MWh`], ["Annual electricity saving", inr(rs)],
+    ["Annual net saving", inr(net)], ["Simple payback", pb ? `${fmt(pb * 12, 1)} months` : "No payback"], ["Annual ROI", B.capex > 0 ? `${fmt(net / B.capex * 100)}%` : "–"],
+    ["CO₂e avoided / yr", `${fmt(kwh * B.grid_ef / 1000, 1)} t`],
+  ].map(([k, v]) => `<div><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+}
+$("#bcForm").addEventListener("input", e => { const k = e.target.dataset.k; if (k) { B[k] = parseFloat(e.target.value) || 0; calcBC(); } });
+calcBC();
+
+/* ---------- OPERATIONS ---------- */
+const days = daily.map(d => d.date);
+$("#alertTiles").innerHTML =
+  tile(`${ICON.critical} Critical equipment`, eqCrit, "hr", eqCrit ? "15 Sep 13:00 · overload or blockage" : "none") +
+  tile(`${ICON.warning} Equipment warnings`, eqWarn, "hr", "score 45–69") +
+  tile(`${ICON.warning} Standby energy reviews`, standby, "hr", "idle hours with unusual kWh") +
+  tile(`${ICON.idle} Idle hours`, H.state.filter(s => s === 0).length, "hr", "00:00–03:59 daily, no fault alarms") +
+  tile("Running hours", H.state.filter(s => s === 2).length, "hr", `plus ${H.state.filter(s => s === 1).length} startup, ${H.state.filter(s => s === 3).length} shutdown`);
+$$("#alertTiles .k svg").forEach(s => { s.style.width = "13px"; s.style.height = "13px"; s.style.verticalAlign = "-2px"; s.style.marginRight = "4px"; });
+
+const METRICS = {
+  sec: { k: "SEC", unit: "kWh/t", d: 1, get: i => H.sec[i] },
+  vib: { k: "Vibration", unit: "mm/s", d: 2, get: i => H.state[i] === 0 ? null : H.vib[i] },
+  curr: { k: "Motor current", unit: "A", d: 1, get: i => H.state[i] === 0 ? null : H.curr[i] },
+  eq: { k: "Equipment score", unit: "/100", d: 0, get: i => H.state[i] === 0 ? null : H.eq[i] },
+  en: { k: "Energy score", unit: "/100", d: 0, get: i => H.en[i] },
+};
+let hmKey = "sec", selDay = 14;
+$("#hmMetric").innerHTML = Object.entries(METRICS).map(([k, m]) => `<button data-k="${k}" aria-pressed="${k === hmKey}">${m.k}</button>`).join("");
+const SEQ = [0, 1, 2, 3, 4, 5, 6].map(i => `var(--seq-${i})`);
+const STATE_NAMES = ["Idle", "Startup", "Running", "Shutdown"];
+function heatmap() {
+  chart($("#heatmap"), (el, W) => {
+    const M = METRICS[hmKey], m = { t: 6, r: 6, b: 24, l: 40 };
+    const vals = Array.from({ length: NH }, (_, i) => M.get(i)).filter(v => v != null);
+    let mn = Math.min(...vals), mx = Math.max(...vals);
+    if (hmKey === "sec") { mn = 28; mx = 38; }
+    const cw = (W - m.l - m.r) / 30, ch = 13, Hh = m.t + 24 * ch + m.b;
+    const bin = v => Math.max(0, Math.min(6, Math.floor((v - mn) / (mx - mn || 1) * 7)));
+    let s = "";
+    for (let d = 0; d < 30; d++) for (let h = 0; h < 24; h++) {
+      const i = d * 24 + h, v = M.get(i), x = m.l + d * cw, y = m.t + h * ch;
+      const crit = stLbl[H.eqs[i]] === "CRITICAL ANOMALY";
+      const fill = v == null ? "var(--idle)" : SEQ[bin(v)];
+      s += `<rect data-i="${i}" x="${x + 1}" y="${y + 1}" width="${cw - 2}" height="${ch - 2}" rx="2" style="fill:${fill}${crit ? ";stroke:var(--critical);stroke-width:2.5" : ""}"/>`;
+    }
+    s += `<rect x="${m.l + selDay * cw}" y="${m.t}" width="${cw}" height="${24 * ch}" rx="2" style="fill:none;stroke:var(--ink);stroke-width:1.5"/>`;
+    [0, 4, 8, 12, 16, 20].forEach(h => { s += `<text x="${m.l - 6}" y="${m.t + h * ch + ch - 3}" text-anchor="end">${String(h).padStart(2, "0")}:00</text>`; });
+    const every = cw < 18 ? 5 : cw < 30 ? 2 : 1;
+    for (let d = 0; d < 30; d += every) s += `<text x="${m.l + d * cw + cw / 2}" y="${Hh - 6}" text-anchor="middle">${d + 1}</text>`;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" height="${Hh}" style="cursor:pointer">${s}</svg>`;
+    const svg = el.firstChild;
+    svg.addEventListener("pointermove", e => {
+      const i = e.target.dataset?.i; if (i == null) return hideTip();
+      const d = Math.floor(i / 24), h = i % 24, v = M.get(+i);
+      showTip(e, `${dLabel(days[d])}, ${String(h).padStart(2, "0")}:00`, [
+        { k: M.k, v: v == null ? "idle" : `${fmt(v, M.d)} ${M.unit}` }, { k: "State", v: STATE_NAMES[H.state[i]] },
+        { k: "Throughput", v: `${fmt(H.t[i], 2)} t` }, { k: "Equipment", v: stLbl[H.eqs[i]].toLowerCase() }, { k: "Energy", v: stLbl[H.ens[i]].toLowerCase() },
+      ]);
+    });
+    svg.addEventListener("pointerleave", hideTip);
+    svg.addEventListener("click", e => { const i = e.target.dataset?.i; if (i != null) { selDay = Math.floor(i / 24); $("#daySel").value = selDay; rerenderHeat(); traces(); } });
+    const steps = SEQ.map((c, k) => `<i class="sw box" style="background:${c};width:18px;border-radius:0"></i>`).join("");
+    $("#hmLegend").innerHTML = `<span>${fmt(mn, M.d)}</span><span style="gap:0">${steps}</span><span>${fmt(mx, M.d)} ${M.unit}</span><span><i class="sw box" style="background:var(--idle)"></i>Idle / not applicable</span><span><i class="sw box" style="background:transparent;border:2px solid var(--critical)"></i>Critical equipment alert</span>`;
+  });
+}
+$("#hmMetric").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; hmKey = b.dataset.k; $$("#hmMetric button").forEach(x => x.setAttribute("aria-pressed", x === b)); rerenderHeat(); });
+let heatmapRender;
+function rerenderHeat() { const idx = renders.indexOf(heatmapRender); if (idx >= 0) renders.splice(idx, 1); heatmap(); heatmapRender = renders[renders.length - 1]; }
+heatmap(); heatmapRender = renders[renders.length - 1];
+
+$("#daySel").innerHTML = days.map((d, i) => `<option value="${i}">${dLabel(d)} 2026</option>`).join("");
+$("#daySel").value = selDay;
+$("#daySel").addEventListener("change", e => { selDay = +e.target.value; rerenderHeat(); traces(); });
+const cfg = Object.fromEntries(D.anomaly_cfg.map(c => [c.metric, c]));
+let traceRenders = [];
+function traces() {
+  traceRenders.forEach(r => { const i = renders.indexOf(r); if (i >= 0) renders.splice(i, 1); });
+  const base = selDay * 24, hrs = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`);
+  const idleSpans = []; let a = null;
+  for (let h = 0; h < 24; h++) { const idle = H.state[base + h] === 0; if (idle && a == null) a = h; if (!idle && a != null) { idleSpans.push([a, h - 1]); a = null; } }
+  if (a != null) idleSpans.push([a, 23]);
+  const defs = [
+    ["Motor current", "curr", "A", "Motor_Current_A", 1], ["Vibration", "vib", "mm/s", "Vibration_mm_s", 2],
+    ["Process temperature", "temp", "°C", "Temperature_C", 1], ["SEC", "sec", "kWh/t", "SEC_kWh_t", 1],
+  ];
+  $("#dayTitle").textContent = `Sensor traces · ${dLabel(days[selDay])} 2026`;
+  $("#traces").innerHTML = defs.map(([t, k]) => `<div><div class="sub" style="font-weight:600;color:var(--ink)">${t}</div><div class="chart" id="tr-${k}"></div></div>`).join("");
+  const before = renders.length;
+  defs.forEach(([t, k, unit, ck, d]) => {
+    const vals = hrs.map((_, h) => H[k][base + h]);
+    const c = cfg[ck];
+    const marks = []; hrs.forEach((_, h) => { if (stLbl[H.eqs[base + h]] === "CRITICAL ANOMALY" && vals[h] != null) marks.push({ i: h, v: vals[h] }); });
+    const nonNull = vals.filter(v => v != null);
+    lineChart($(`#tr-${k}`), {
+      labels: hrs, unit, d, H: 170, td: k === "vib" ? 1 : 0, noEnd: true,
+      yMin: Math.min(c.nl, ...nonNull), yMax: Math.max(c.nh, ...nonNull),
+      series: [{ name: t, values: vals, c: "var(--s1)" }], band: { lo: c.nl, hi: c.nh }, shade: idleSpans, marks,
+      xFmt: (l, i) => i % 4 === 0 ? l : "", tipTitle: i => `${hrs[i]} · ${STATE_NAMES[H.state[base + i]]}`,
+      tipExtra: i => [{ k: "Normal band", v: `${c.nl}–${c.nh} ${unit}` }],
+    });
+  });
+  traceRenders = renders.slice(before);
+}
+traces();
+const runIdx = H.state.map((s, i) => s === 2 ? i : -1).filter(i => i >= 0);
+const vibOver = runIdx.filter(i => H.vib[i] > cfg.Vibration_mm_s.nh).length / runIdx.length;
+const curOver = runIdx.filter(i => H.curr[i] > cfg.Motor_Current_A.nh).length / runIdx.length;
+$("#envNote").innerHTML = `<b>Envelope check.</b> In running hours, vibration is above its 3.5 mm/s normal ceiling ${fmt(vibOver * 100)}% of the time and motor current is above 90 A ${fmt(curOver * 100)}% of the time, yet only one hour crosses the critical score. This is why 419 running hours carry the "high load and vibration" diagnosis note. Either the shredder runs hot against its envelope, or the normal band in Anomaly_Config is set too tight for this line; it is worth confirming before the pilot.`;
+
+let alertSev = "all";
+const AF = [["all", "All"], ["CRITICAL ANOMALY", "Critical"], ["STANDBY REVIEW", "Standby review"]];
+$("#alertFilter").innerHTML = AF.map(([k, l]) => `<button data-k="${k}" aria-pressed="${k === alertSev}">${l} (${k === "all" ? D.alerts.length : D.alerts.filter(a => a.sev === k).length})</button>`).join("");
+function alertsTable() {
+  const rows = D.alerts.filter(a => alertSev === "all" || a.sev === alertSev).sort((a, b) => (a.sev === "CRITICAL ANOMALY" ? -1 : 0) - (b.sev === "CRITICAL ANOMALY" ? -1 : 0) || a.ts.localeCompare(b.ts));
+  table($("#alertTable"), [
+    { h: "Time", f: r => `<span class="mono">${esc(r.ts.slice(5))}</span>` }, { h: "Severity", f: r => sevHtml(r.sev) },
+    { h: "State", f: r => `<span class="chip">${esc(r.state)}</span>` }, { h: "Equip.", n: 1, f: r => r.eq }, { h: "Energy", n: 1, f: r => r.en },
+    { h: "Temp °C", n: 1, f: r => fmt(r.temp, 1) }, { h: "Current A", n: 1, f: r => fmt(r.curr, 1) }, { h: "Vib mm/s", n: 1, f: r => fmt(r.vib, 2) },
+    { h: "Recommended action", f: r => `<span class="sub">${esc(r.action)}</span>` },
+  ], rows);
+}
+$("#alertFilter").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; alertSev = b.dataset.k; $$("#alertFilter button").forEach(x => x.setAttribute("aria-pressed", x === b)); alertsTable(); });
+alertsTable();
+table($("#cfgTable"), [
+  { h: "Metric", f: r => esc(r.metric.replace(/_/g, " ")) }, { h: "Normal", n: 1, f: r => `${r.nl}–${r.nh}` },
+  { h: "Critical", n: 1, f: r => `<${r.cl} / >${r.ch}` }, { h: "Weight", n: 1, f: r => fmt(r.w * 100) + "%" },
+], D.anomaly_cfg);
+$("#bandLegend").innerHTML = `<span>${ICON.good.replace("<svg", '<svg width="14" height="14"')} Normal 0–44</span><span>${ICON.warning.replace("<svg", '<svg width="14" height="14"')} Warning 45–69</span><span>${ICON.critical.replace("<svg", '<svg width="14" height="14"')} Critical 70–100</span>`;
+const stateColors = ["var(--muted)", "var(--s4)", "var(--s1)", "var(--s7)"];
+hbars($("#stateBars"), STATE_NAMES.map((n, k) => ({ k: n, v: H.state.filter(s => s === k).length, c: stateColors[k] })), { max: NH });
+const diagShort = { "Plant idle / scheduled downtime; no equipment-performance anomaly generated.": "Idle, scheduled downtime" };
+hbars($("#diagBars"), H.diag_labels.map((l, k) => ({ k: diagShort[l] || l, v: H.diag.filter(v => v === k).length, c: l.startsWith("Possible") ? "var(--critical)" : l.startsWith("High") ? "var(--s2)" : "var(--s1)" })).sort((a, b) => b.v - a.v), { max: NH });
+
+/* ---------- DATA QUALITY ---------- */
+const dq = D.dq;
+$("#dqTiles").innerHTML =
+  tile("Records assessed", fmt(dq.records), "", `${dq.sensors.length} channels × ${dq.hours} hours`) +
+  tile("Verification coverage", fmt(coverage * 100, 1), "%", mrvReady ? `${ICON.good.replace("<svg", '<svg width="13" height="13" style="vertical-align:-2px"')} meets the 95% review threshold` : "below the 95% threshold") +
+  tile("Valid records", fmt(dq.status.Valid), "", `${fmt(dq.status.Missing)} missing or estimated`) +
+  tile("Outliers flagged", fmt(dq.sensors.reduce((s, x) => s + x.outliers, 0)), "", "range checks passed") +
+  tile("Calibration", fmt(dq.sensors.reduce((s, x) => s + x.cal_valid, 0) / dq.records * 100), "%", "valid · last calibrated 1 Jul 2026");
+hbars($("#dqBars"), dq.sensors.map(s => ({
+  html: `${esc(s.measure)} <span class="mono muted" style="font-size:12px">${esc(s.sensor)}</span>`, v: s.valid + s.missing,
+  label: `${fmt(s.valid / (s.valid + s.missing) * 100, 1)}%`,
+})), { max: 720 });
+$$("#dqBars .bar-row").forEach((row, k) => {
+  const s = dq.sensors[k];
+  row.querySelector(".bar-track").outerHTML = `<span class="stack"><i style="flex:${s.valid};background:var(--s1)" title="${s.valid} valid"></i>${s.missing ? `<i style="flex:${s.missing};background:var(--s4)" title="${s.missing} missing"></i>` : ""}</span>`;
+});
+$("#dqNote").innerHTML = `<b>All ${fmt(dq.status.Missing)} missing records fall in idle hours.</b> Moisture and SEC are undefined when throughput is zero, so the gaps are structural. During startup, running and shutdown every channel is 100% complete. Under rule V3 these idle gaps would not be flagged, since V3 applies only while the plant runs.`;
+table($("#sensorTable"), [
+  { h: "Sensor", f: r => `<span class="mono">${esc(r.sensor)}</span>` }, { h: "Equipment", f: r => `<span class="sub">${esc(r.equipment)}</span>` },
+  { h: "Unit", k: "unit" }, { h: "Source", f: r => `<span class="chip">${esc(r.source)}</span>` }, { h: "Last cal.", f: r => `<span class="mono">${esc(r.last_cal)}</span>` },
+], dq.sensors);
+const V = [
+  ["V1", "Completeness", "Required field missing or device signature fails", "Rejected at ingest", "No signed batches yet; the workbook has no signature field."],
+  ["V2", "Physical range", "Value outside physical limits", "Flagged", "0 outliers flagged across 5,040 records."],
+  ["V3", "Missing data", "No reading for over 15 min while the plant runs", "Gap flagged", "0 running-hour gaps. 240 idle-hour gaps are structural."],
+  ["V4", "Energy balance", "Sub-meters differ from main incomer by over 5%", "Period flagged", "Only the main meter is logged; equipment split is a baseline profile."],
+  ["V5", "Bill reconciliation", "Monthly kWh differs from utility bill by over 3%", "Month flagged", "Needs the September bill against 95,844 kWh metered."],
+  ["V6", "Methane balance", "CH₄ out plus losses exceeds CH₄ in", "Period flagged", "CBG plants only."],
+  ["V7", "Yield range", "Biogas per tonne outside the feedstock's range", "Period flagged", "CBG plants only. Analogue here: recovery band 78–86%."],
+  ["V8", "Dispatch match", "Dispatch meter differs from invoices by over 2%", "Period flagged", "CBG plants only."],
+  ["V9", "Quality", "Product methane below IS 16087 or contract limit", "Gas excluded", "CBG plants only (90% CH₄ minimum, 95% proposed)."],
+  ["V10", "Clock integrity", "Timestamps out of order or drift over 60 s", "Batch flagged", "720 hourly timestamps, in order, no gaps."],
+];
+table($("#vRules"), [
+  { h: "ID", f: r => `<span class="rule-id">${r[0]}</span>` }, { h: "Check", f: r => `<b>${r[1]}</b>` }, { h: "Triggers when", f: r => esc(r[2]) },
+  { h: "Result", f: r => `<span class="chip">${esc(r[3])}</span>` }, { h: "In this dataset", f: r => `<span class="sub">${esc(r[4])}</span>` },
+], V);
+table($("#rRules"), [{ h: "ID", f: r => `<span class="rule-id">${r[0]}</span>` }, { h: "Rule", f: r => esc(r[1]) }], [
+  ["R1", "A flagged reading leaves the credit total immediately and stays out until resolved."],
+  ["R2", "A confirmed real event, backed by independent evidence, is restored to valid."],
+  ["R3", "A sensor fault is filled from a backup: redundant meter, then invoices or bills pro-rata, then the most conservative comparable value."],
+  ["R4", "With no reliable backup, the gap earns zero credits."],
+  ["R5", "Suspected tampering is excluded permanently, logged and reported to the verifier."],
+  ["R6", "Flags unresolved at period end are treated as excluded."],
+]);
+table($("#lRules"), [{ h: "ID", f: r => `<span class="rule-id">${r[0]}</span>` }, { h: "Rule", f: r => esc(r[1]) }], [
+  ["L1", "Every reading is stored with the SHA-256 hash of its content plus the previous record's hash."],
+  ["L2", "Records are never edited or deleted. A correction is a new record with reason and approver."],
+  ["L3", "The chain is verified hourly and on every export; a break raises a critical alert and freezes issuance."],
+  ["L4", "Each period's records are summarised into a Merkle root stamped on the report and every credit."],
+  ["L5", "Auditors have read-only access to the full chain and can re-run verification."],
+]);
+
+/* ---------- CREDITS ---------- */
+const E = { cbg: 1650, ncv: 50, efFossil: 56.1, gridMWh: 3300, gridEF: 0.71, slip: 1, gwp: 28, diesel: 20000 };
+const erFields = [
+  ["cbg", "CBG sold (t/yr)", 10], ["ncv", "NCV (MJ/kg)", 0.5], ["efFossil", "Fossil EF (tCO₂/TJ)", 0.1], ["gridMWh", "Grid electricity (MWh/yr)", 50],
+  ["gridEF", "Grid EF (tCO₂/MWh)", 0.01], ["slip", "Methane slip + leaks (% of output)", 0.1], ["gwp", "GWP CH₄", 1], ["diesel", "Diesel (litres/yr)", 500],
+];
+$("#erForm").innerHTML = erFields.map(([k, l, st]) => `<label class="field" for="er-${k}">${l}<input type="number" id="er-${k}" data-k="${k}" step="${st}" min="0" value="${E[k]}"></label>`).join("");
+const R = { price: 1000, model: "own" };
+const MODELS = { own: "Purchase + subscription", portfolio: "Portfolio (5% buffer, 15% fee)", zero: "Zero capex (25% carbon share)" };
+$("#modelSeg").innerHTML = Object.entries(MODELS).map(([k, l]) => `<button data-k="${k}" aria-pressed="${k === R.model}">${l}</button>`).join("");
+$("#revForm").innerHTML = `<label class="field" for="price"><span class="row">Price per credit <b id="priceOut"></b></span><input type="range" id="price" min="250" max="3000" step="50" value="${R.price}"></label>`;
+function calcER() {
+  const fossil = E.cbg * 1000 * E.ncv / 1e6 * E.efFossil, grid = E.gridMWh * E.gridEF, slipT = E.cbg * E.slip / 100, slip = slipT * E.gwp, dsl = E.diesel * 2.68 / 1000;
+  return { fossil, grid, slipT, slip, dsl, er: Math.floor(fossil - grid - slip - dsl) };
+}
+let erRender;
+function drawER() {
+  const c = calcER();
+  const idx = renders.indexOf(erRender); if (idx >= 0) renders.splice(idx, 1);
+  waterfall($("#erChart"), {
+    unit: "tCO₂e/yr", d: 0, neg: "var(--s2)", pos: "var(--s3)", H: 270,
+    steps: [
+      { label: "Fossil fuel displaced", v: c.fossil, detail: `${fmt(E.cbg)} t × ${E.ncv} MJ/kg × ${E.efFossil}` },
+      { label: "Grid electricity", v: -c.grid, detail: `${fmt(E.gridMWh)} MWh × ${E.gridEF}` },
+      { label: "Methane slip & leaks", v: -c.slip, detail: `${fmt(c.slipT, 1)} t CH₄ × GWP ${E.gwp}` },
+      { label: "Diesel", v: -c.dsl, detail: `${fmt(E.diesel)} L × 2.68 kg/L` },
+      { label: "Net credits", v: c.er, total: true, c: "var(--s1)" },
+    ],
+  });
+  erRender = renders[renders.length - 1];
+  calcRev(c.er);
+}
+let sensRender;
+function calcRev(er) {
+  const hw = 1249000, sub = 500000;
+  const share = R.model === "portfolio" ? 0.95 * 0.85 : R.model === "zero" ? 0.75 : 1;
+  const year1 = R.model === "zero" ? 0 : hw + sub;
+  const credits = R.model === "portfolio" ? Math.floor(er * 0.95 * 0.85) : er;
+  const revenue = er * R.price * share;
+  $("#priceOut").textContent = `₹${fmt(R.price)}`;
+  $("#revOut").innerHTML = [
+    ["Credits to plant", `${fmt(credits)} /yr`], ["Annual revenue", inr(revenue)], ["Year-1 cost", year1 ? inr(year1) : "₹0 upfront"],
+    ["Payback", year1 ? (revenue > 0 ? `${fmt(year1 / revenue * 12, 1)} months` : "–") : "Immediate"],
+  ].map(([k, v]) => `<div><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  $("#modelNote").textContent = {
+    own: "Year-1 cost is the ₹12.49 lakh kit plus an assumed ₹5 lakh annual subscription. At ₹500, ₹1,000 and ₹2,000 per credit the submission gives about 24, 12 and 6 months.",
+    portfolio: "For 2–5 TPD plants pooled into one project: Credits = ER × (1 − 5% buffer) × (1 − 15% platform fee). Each plant keeps its own baseline (rule A1).",
+    zero: "Dross Vault installs at no upfront cost and keeps 25% of credit revenue for the crediting period.",
+  }[R.model];
+  const idx = renders.indexOf(sensRender); if (idx >= 0) renders.splice(idx, 1);
+  const prices = [250, 500, 750, 1000, 1500, 2000, 2500, 3000];
+  barChart($("#sensChart"), {
+    labels: prices.map(p => `₹${fmt(p)}`), values: prices.map(p => er * p * share / 1e5), unit: "lakh/yr", d: 1, H: 190, name: "Annual revenue",
+    colorFn: (v, i) => prices[i] === R.price ? "var(--s1)" : "var(--seq-1)",
+    ref: year1 ? { v: year1 / 1e5, label: `Year-1 cost ${inr(year1)}` } : null, refLeft: true,
+    tipTitle: i => `${prices[i] === R.price ? "Selected · " : ""}₹${fmt(prices[i])} per credit`,
+  });
+  sensRender = renders[renders.length - 1];
+}
+$("#erForm").addEventListener("input", e => { const k = e.target.dataset.k; if (k) { E[k] = parseFloat(e.target.value) || 0; drawER(); } });
+$("#price").addEventListener("input", e => { R.price = +e.target.value; calcRev(calcER().er); });
+$("#modelSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; R.model = b.dataset.k; $$("#modelSeg button").forEach(x => x.setAttribute("aria-pressed", x === b)); calcRev(calcER().er); });
+drawER();
+
+hbars($("#kitBars"), [
+  ["Gas flow meters (raw, off-gas, product) × 3", 450000], ["Online gas analyzer (CH₄, CO₂, H₂S, O₂)", 400000], ["Fixed methane leak detectors × 6", 150000],
+  ["Energy meters (incomer + 8 motors)", 89000], ["Digester T, P and pH probes", 50000], ["Installation and commissioning", 50000],
+  ["Weighbridge and dispatch integration", 30000], ["Edge gateway with 4G", 30000],
+].map(([k, v]) => ({ k, v, label: `₹${fmt(v)}` })));
+const MKT = [["Commissioned today", 132, 16.5, 6.6], ["Holding SATAT letters of intent", 1100, 137.5, 55], ["SATAT 5,000-plant target", 5000, 625, 250]];
+table($("#mktTable"), [
+  { h: "Segment", f: r => esc(r[0]) }, { h: "Plants", n: 1, f: r => fmt(r[1]) },
+  { h: "Hardware", n: 1, f: r => `₹${fmt(r[2], 1)} cr` }, { h: "Recurring / yr", n: 1, f: r => `₹${fmt(r[3], 1)} cr` },
+], MKT);
+hbars($("#mktBars"), MKT.map(r => ({ k: r[0], v: r[2] + r[3], label: `₹${fmt(r[2] + r[3], 1)} cr year 1`, c: "var(--s1)" })));
+
+$("#lifecycle").innerHTML = [
+  ["Pending", "Created after the period closes and every flag is resolved (G1)."],
+  ["Issued", "When the matching CCC appears in the national registry; national serial recorded (G2)."],
+  ["Transferred", "One owner at a time; balances derived from events (G3)."],
+  ["Retired / surrendered", "Final. Beneficiary and purpose recorded; certificate shows the evidence root (G4, G5).", "final"],
+].map(([b, p, c], i, a) => `<div class="step ${c || ""}"><b>${b}</b><p>${p}</p></div>${i < a.length - 1 ? '<span class="arrow" aria-hidden="true">→</span>' : ""}`).join("") +
+  `<div class="step cancel"><b>Cancelled</b><p>If a verifier or BEE finds an error; reason recorded, nothing deleted (G6). A 5% buffer covers corrections (G7).</p></div>`;
+table($("#creditRecord"), [{ h: "Field", f: r => `<b>${r[0]}</b>` }, { h: "Example", f: r => `<span class="mono">${esc(r[1])}</span>` }, { h: "Purpose", f: r => `<span class="sub">${esc(r[2])}</span>` }], [
+  ["Serial number", "DV-GHY01-2026Q3-000142", "Project, plant, vintage, sequence"],
+  ["Vintage period", "2026-07-01 to 2026-09-30", "When the reduction happened"],
+  ["Plant unit", "GHY01, Dross Vault Guwahati CBG plant", "Which plant earned it"],
+  ["Evidence root", "Merkle root of the period's ledger", "Links the credit to its sensor data"],
+  ["Monitoring report hash", "SHA-256 of the verified report", "Links the credit to the verified document"],
+  ["National registry ID", "CCC serial from Grid Controller of India", "Reconciliation with the official record"],
+]);
+$("#personas").innerHTML = [
+  ["Plant operator", "Mobile first, local language", ["Sensor health, last reading, gaps", "Today's feedstock, gas produced, CBG dispatched", "Methane balance with a green or red status", "Active flags and leak alarms with the action to take", "Calibration due dates"]],
+  ["Owner or portfolio manager", "Desktop", ["Credits this period: confirmed vs on hold, and why", "Credits by source: methane avoided, fossil displaced, minus project emissions", "Pipeline: pending, verified, issued, sold, retired", "Open flags by plant and rule, with ageing", "Revenue statement per plant"]],
+  ["Auditor or verifier", "Read-only", ["Every term of the calculation and the factors used, per period", "Reading table with hashes and a Verify chain button", "Flags and corrections log with approvers", "Credit lookup by serial with full event history", "One-click monitoring report export"]],
+].map(([t, s, li]) => `<div class="callout" style="display:grid;gap:6px;align-content:start"><b style="font-family:var(--f-display);font-size:17px;letter-spacing:.03em">${t}</b><span class="eyebrow">${s}</span><ul class="plain">${li.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`).join("");
+
+/* ---------- ROLLOUT ---------- */
+const stepList = (el, items) => { el.innerHTML = items.map(([b, p]) => `<li><span><b>${b}</b><p>${p}</p></span></li>`).join(""); };
+stepList($("#pathway"), [
+  ["Pilot", "Guwahati plant runs dMRV alongside manual records for one full monitoring period and produces its first verified report."],
+  ["Early customers", "5 to 10 plants with 2 or 3 developers; portfolio registry for smaller plants."],
+  ["Scale", "50 or more plants, with the kit bundled into new SATAT builds by EPC partners."],
+  ["Platform", "Registry offered as a service to other dMRV providers; extension to MSW and press-mud bio-CNG plants."],
+]);
+stepList($("#pipeline"), [
+  ["Feedstock arrives", "Weighbridge records gross and tare; operator tags the feedstock type; matched to the delivery note."],
+  ["Gas produced and measured", "Flow meters and analyzer log raw biogas volume and composition every minute."],
+  ["Upgraded and compressed", "Off-gas flow and CH₄ measured to quantify slip; product checked against IS 16087."],
+  ["CBG dispatched", "Dispatch meter records kg sold, matched to invoice and buyer."],
+  ["Losses and energy tracked", "Leak detectors, flare meters, energy meters and fuel logs."],
+  ["Validated and chained", "Gateway signs each batch; cloud validates and appends to the hash chain."],
+  ["Period closes", "Engine applies the methodology and stamps the report with the period's Merkle root."],
+  ["Verified and issued", "Accredited verifier reviews remotely; BEE issues CCCs; registry links each to its evidence."],
+]);
+table($("#riskTable"), [{ h: "Risk", f: r => `<b>${esc(r[0])}</b>` }, { h: "Impact", f: r => `<span class="chip">${esc(r[1])}</span>` }, { h: "Mitigation", f: r => `<span class="sub">${esc(r[2])}</span>` }], [
+  ["No approved CCTS methodology yet fits CBG methane avoidance and displacement", "Credits delayed", "Engage BEE early; map rules onto CDM-style methodologies; sell into voluntary standards meanwhile."],
+  ["Verifiers unwilling to rely on remote data", "Higher verification cost", "Read-only auditor access, re-runnable chain checks, parallel manual logs in the pilot."],
+  ["Gas meter and analyzer drift", "Wrong credits", "Calibration schedule, methane balance (V6) and dispatch match (V8), redundant metering on key flows."],
+  ["Feedstock type misreported to claim higher avoidance credits", "Overstated credits", "Delivery-note matching, yield range check (V7), periodic feedstock sampling."],
+  ["Sensor or gateway failure at remote sites", "Data gaps", "Offline buffering, conservative substitution (R3, R4), spare-parts kit."],
+  ["Low or volatile CCC prices", "Weaker revenue", "Subscription value from faster verification and operational alerts, not only credit sales."],
+]);
+table($("#cmpTable"), [{ h: "Aspect", f: r => `<b>${esc(r[0])}</b>` }, { h: "Manual MRV", f: r => `<span class="sub">${esc(r[1])}</span>` }, { h: "Dross Vault dMRV", f: r => esc(r[2]) }], [
+  ["Feedstock data", "Handwritten weighbridge slips", "Logged automatically, tagged by type"],
+  ["Gas and CBG data", "Periodic readings, invoices", "Continuous flow and composition"],
+  ["Methane loss", "Assumed or a default", "Measured continuously"],
+  ["Error and fraud detection", "Found at audit, if at all", "Flagged within minutes"],
+  ["Tamper evidence", "None", "Hash chain; any edit is detected"],
+  ["Verification", "Site visit, paper reconciliation", "Remote read-only access"],
+  ["Report preparation", "Weeks of compilation", "Generated when the period closes"],
+]);
+$("#openQs").innerHTML = [
+  "Which approved CCTS offset methodology applies to CBG plants, and does it require measured methane slip?",
+  "Which accredited verification agency will review the Guwahati pilot?",
+  "Which sensors does the Guwahati plant already have, so the kit cost can be reduced?",
+  "Which voluntary standard, if any, should be used until a CCTS methodology is approved?",
+].map(q => `<li>${esc(q)}</li>`).join("");
+table($("#assumpTable"), [{ h: "Parameter", f: r => esc(r.param) }, { h: "Value", f: r => `<span class="mono">${esc(r.value)}</span>` }], D.assumptions);
+
+addEventListener("hashchange", () => { const t = location.hash.slice(1); if (TABS.includes(t)) selectTab(t, false); });
+/* ---------- boot ---------- */
+let start = location.hash.slice(1);
+if (!TABS.includes(start)) { try { start = localStorage.getItem("dv-tab") || "overview"; } catch (e) { start = "overview"; } }
+selectTab(start, false);
+})();
+</script>
+
+</body>
+</html>
