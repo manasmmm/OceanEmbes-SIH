@@ -21,6 +21,20 @@ pip install openpyxl
 python3 dashboard/build_data.py
 ```
 
+### Live site (GitHub Pages)
+
+Deployed at **https://manasmmm.github.io/OceanEmbes-SIH/** from the `gh-pages` branch, which holds only `index.html` (a copy of `site/index.html`) and `.nojekyll`.
+
+To redeploy after rebuilding:
+
+```
+python3 dashboard/build_data.py
+git worktree add /tmp/ghp gh-pages
+cp site/index.html /tmp/ghp/index.html
+git -C /tmp/ghp commit -am "Redeploy dashboard" && git -C /tmp/ghp push origin gh-pages
+git worktree remove /tmp/ghp
+```
+
 ### Deploy on Render
 
 `render.yaml` deploys `site/` as a Render static site (no build step; `site/index.html` is committed pre-built).
