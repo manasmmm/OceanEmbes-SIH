@@ -20,3 +20,12 @@ To rebuild after editing the workbook or `dashboard/src.html`:
 pip install openpyxl
 python3 dashboard/build_data.py
 ```
+
+### Deploy on Render
+
+`render.yaml` deploys `site/` as a Render static site (no build step; `site/index.html` is committed pre-built).
+
+1. In the Render dashboard choose **New → Blueprint** and connect this GitHub repository.
+2. Pick the branch that contains `render.yaml` and apply. Render creates the `drossvault-dmrv` static site and serves it at `https://drossvault-dmrv.onrender.com` (or a similar name if taken).
+
+Manual alternative: **New → Static Site**, build command empty, publish directory `site`.

@@ -1,0 +1,17 @@
+# Render Blueprint: deploys the DrossVault dMRV dashboard as a static site.
+# site/index.html is committed pre-built; run `python3 dashboard/build_data.py`
+# locally after changing the workbook or dashboard/src.html, then push.
+services:
+  - type: web
+    name: drossvault-dmrv
+    runtime: static
+    buildCommand: echo "Pre-built static site in ./site"
+    staticPublishPath: ./site
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=300
